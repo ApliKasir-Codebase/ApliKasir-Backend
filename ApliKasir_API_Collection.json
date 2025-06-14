@@ -1,0 +1,759 @@
+{
+	"info": {
+		"_postman_id": "aplikasir-backend-api-collection",
+		"name": "ApliKasir Backend API",
+		"description": "API Collection untuk ApliKasir Backend yang telah dioptimasi. Hanya berisi endpoint yang benar-benar digunakan oleh mobile app.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "aplikasir-team"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"description": "Endpoint untuk registrasi dan login user",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () { pm.response.to.have.status(201); });",
+									"pm.test(\"Registration successful\", function () { ",
+									"    pm.expect(pm.response.json().message).to.include(\"registered successfully\"); ",
+									"});",
+									"",
+									"// Save credentials for login",
+									"const reqBody = JSON.parse(pm.request.body.raw);",
+									"pm.collectionVariables.set(\"testEmail\", reqBody.email);",
+									"pm.collectionVariables.set(\"testPassword\", reqBody.password);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"phoneNumber\": \"081234567890\",\n    \"storeName\": \"Toko Berkah\",\n    \"storeAddress\": \"Jl. Merdeka No. 123, Jakarta\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						}
+					},
+					"response": [
+						{
+							"name": "Register Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"phoneNumber\": \"081234567890\",\n    \"storeName\": \"Toko Berkah\",\n    \"storeAddress\": \"Jl. Merdeka No. 123, Jakarta\",\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "auth", "register"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"User registered successfully!\",\n    \"userId\": 1\n}"
+						}
+					]
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Login successful\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include(\"Login successful\");",
+									"    pm.expect(jsonData.accessToken).to.be.a('string');",
+									"    pm.expect(jsonData.user).to.be.an('object');",
+									"});",
+									"",
+									"// Save access token for authenticated requests",
+									"const responseJson = pm.response.json();",
+									"if (responseJson.accessToken) {",
+									"    pm.collectionVariables.set(\"accessToken\", responseJson.accessToken);",
+									"    pm.collectionVariables.set(\"userId\", responseJson.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"identifier\": \"{{testEmail}}\",\n    \"password\": \"{{testPassword}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					},
+					"response": [
+						{
+							"name": "Login Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"identifier\": \"john.doe@example.com\",\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/login",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "auth", "login"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"Login successful!\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n        \"id\": 1,\n        \"name\": \"John Doe\",\n        \"email\": \"john.doe@example.com\",\n        \"phoneNumber\": \"081234567890\",\n        \"storeName\": \"Toko Berkah\",\n        \"storeAddress\": \"Jl. Merdeka No. 123, Jakarta\"\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔄 Synchronization",
+			"description": "Endpoint untuk sinkronisasi data antara mobile app dan server",
+			"item": [
+				{
+					"name": "Full Sync (Bidirectional)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Sync successful\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.serverSyncTime).to.be.a('string');",
+									"    pm.expect(jsonData.serverChanges).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\",\n    \"localChanges\": {\n        \"products\": {\n            \"new\": [\n                {\n                    \"local_id\": 1,\n                    \"nama_produk\": \"Indomie Goreng\",\n                    \"kode_produk\": \"IDM001\",\n                    \"jumlah_produk\": 50,\n                    \"harga_modal\": 2500.0,\n                    \"harga_jual\": 3000.0,\n                    \"gambar_produk\": \"/storage/products/indomie.jpg\",\n                    \"created_at\": \"2024-06-13T08:30:00.000Z\",\n                    \"updated_at\": \"2024-06-13T08:30:00.000Z\",\n                    \"is_deleted\": false\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"customers\": {\n            \"new\": [\n                {\n                    \"local_id\": 1,\n                    \"nama_pelanggan\": \"Ahmad Suryadi\",\n                    \"nomor_telepon\": \"081234567890\",\n                    \"created_at\": \"2024-06-13T09:00:00.000Z\",\n                    \"updated_at\": \"2024-06-13T09:00:00.000Z\",\n                    \"is_deleted\": false\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"transactions\": {\n            \"new\": [\n                {\n                    \"local_id\": 1,\n                    \"tanggal_transaksi\": \"2024-06-13T10:15:00.000Z\",\n                    \"total_belanja\": 15000.0,\n                    \"total_modal\": 12500.0,\n                    \"metode_pembayaran\": \"cash\",\n                    \"status_pembayaran\": \"paid\",\n                    \"id_pelanggan\": null,\n                    \"detail_items\": \"[{\\\"product_id\\\":1,\\\"quantity\\\":5,\\\"price\\\":3000}]\",\n                    \"jumlah_bayar\": 15000.0,\n                    \"jumlah_kembali\": 0.0,\n                    \"created_at\": \"2024-06-13T10:15:00.000Z\",\n                    \"is_deleted\": false\n                }\n            ],\n            \"deleted\": []\n        }\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sync",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync"]
+						}
+					},
+					"response": [
+						{
+							"name": "Sync Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\",\n    \"localChanges\": {\n        \"products\": {\"new\": [], \"updated\": [], \"deleted\": []},\n        \"customers\": {\"new\": [], \"updated\": [], \"deleted\": []},\n        \"transactions\": {\"new\": [], \"deleted\": []}\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/sync",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "sync"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"serverSyncTime\": \"2024-06-13T12:00:00.000Z\",\n    \"itemsUploaded\": 3,\n    \"itemsDownloaded\": 2,\n    \"serverChanges\": {\n        \"products\": {\n            \"new\": [\n                {\n                    \"id\": 2,\n                    \"nama_produk\": \"Teh Botol Sosro\",\n                    \"kode_produk\": \"TBS001\",\n                    \"jumlah_produk\": 24,\n                    \"harga_modal\": 3000.0,\n                    \"harga_jual\": 4000.0,\n                    \"created_at\": \"2024-06-13T11:30:00.000Z\",\n                    \"updated_at\": \"2024-06-13T11:30:00.000Z\"\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"customers\": {\n            \"new\": [],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"transactions\": {\n            \"new\": [],\n            \"updated\": [],\n            \"deleted\": []\n        }\n    },\n    \"conflicts\": [],\n    \"errors\": []\n}"
+						}
+					]
+				},
+				{
+					"name": "Upload Only Sync",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Upload successful\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.itemsUploaded).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\",\n    \"localChanges\": {\n        \"products\": {\n            \"new\": [\n                {\n                    \"local_id\": 2,\n                    \"nama_produk\": \"Aqua 600ml\",\n                    \"kode_produk\": \"AQA600\",\n                    \"jumlah_produk\": 48,\n                    \"harga_modal\": 1500.0,\n                    \"harga_jual\": 2000.0,\n                    \"created_at\": \"2024-06-13T11:00:00.000Z\",\n                    \"updated_at\": \"2024-06-13T11:00:00.000Z\",\n                    \"is_deleted\": false\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"customers\": {\"new\": [], \"updated\": [], \"deleted\": []},\n        \"transactions\": {\"new\": [], \"deleted\": []}\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "upload"]
+						}
+					},
+					"response": [
+						{
+							"name": "Upload Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\",\n    \"localChanges\": {\n        \"products\": {\"new\": [{\"local_id\": 2, \"nama_produk\": \"Aqua 600ml\"}], \"updated\": [], \"deleted\": []}\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/sync/upload",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "sync", "upload"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"serverSyncTime\": \"2024-06-13T12:30:00.000Z\",\n    \"itemsUploaded\": 1,\n    \"errors\": []\n}"
+						}
+					]
+				},
+				{
+					"name": "Download Only Sync",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Download successful\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.serverChanges).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/download",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "download"]
+						}
+					},
+					"response": [
+						{
+							"name": "Download Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"clientLastSyncTime\": \"2024-06-13T10:00:00.000Z\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/sync/download",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "sync", "download"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"serverSyncTime\": \"2024-06-13T13:00:00.000Z\",\n    \"itemsDownloaded\": 5,\n    \"serverChanges\": {\n        \"products\": {\n            \"new\": [\n                {\n                    \"id\": 3,\n                    \"nama_produk\": \"Beng Beng\",\n                    \"kode_produk\": \"BB001\",\n                    \"jumlah_produk\": 100,\n                    \"harga_modal\": 1000.0,\n                    \"harga_jual\": 1500.0,\n                    \"created_at\": \"2024-06-13T12:45:00.000Z\",\n                    \"updated_at\": \"2024-06-13T12:45:00.000Z\"\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"customers\": {\n            \"new\": [\n                {\n                    \"id\": 2,\n                    \"nama_pelanggan\": \"Siti Nurhaliza\",\n                    \"nomor_telepon\": \"081987654321\",\n                    \"created_at\": \"2024-06-13T12:30:00.000Z\",\n                    \"updated_at\": \"2024-06-13T12:30:00.000Z\"\n                }\n            ],\n            \"updated\": [],\n            \"deleted\": []\n        },\n        \"transactions\": {\n            \"new\": [],\n            \"updated\": [],\n            \"deleted\": []\n        }\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Resolve Conflicts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Conflicts resolved\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"conflicts\": [\n        {\n            \"type\": \"product\",\n            \"local_id\": 1,\n            \"server_id\": 1,\n            \"resolution\": \"use_server\",\n            \"data\": {\n                \"nama_produk\": \"Indomie Goreng (Server Version)\",\n                \"kode_produk\": \"IDM001\",\n                \"jumlah_produk\": 45,\n                \"harga_modal\": 2500.0,\n                \"harga_jual\": 3200.0\n            }\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/resolve-conflicts",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "resolve-conflicts"]
+						}
+					}
+				},
+				{
+					"name": "Get Sync Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Metrics received\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.be.true;",
+									"    pm.expect(jsonData.metrics).to.be.an('object');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/sync/metrics?days=7",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "sync", "metrics"],
+							"query": [
+								{
+									"key": "days",
+									"value": "7"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Metrics Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/sync/metrics?days=7",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "sync", "metrics"],
+									"query": [
+										{
+											"key": "days",
+											"value": "7"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"metrics\": {\n        \"totalSyncs\": 15,\n        \"successfulSyncs\": 14,\n        \"failedSyncs\": 1,\n        \"averageSyncTime\": 1250,\n        \"totalItemsSynced\": 45,\n        \"conflictsResolved\": 3,\n        \"lastSyncTime\": \"2024-06-13T13:00:00.000Z\"\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "👤 User Profile",
+			"description": "Endpoint untuk mengelola profil user",
+			"item": [
+				{
+					"name": "Get User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Profile data received\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.be.a('number');",
+									"    pm.expect(jsonData.name).to.be.a('string');",
+									"    pm.expect(jsonData.email).to.be.a('string');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/user/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user", "profile"]
+						}
+					},
+					"response": [
+						{
+							"name": "Profile Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/user/profile",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "user", "profile"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"phoneNumber\": \"081234567890\",\n    \"storeName\": \"Toko Berkah\",\n    \"storeAddress\": \"Jl. Merdeka No. 123, Jakarta\",\n    \"profileImageUrl\": null,\n    \"lastSyncTime\": \"2024-06-13T13:00:00.000Z\",\n    \"createdAt\": \"2024-06-10T08:00:00.000Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Update User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+									"pm.test(\"Profile updated\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.include(\"updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe Updated\",\n    \"phoneNumber\": \"081234567891\",\n    \"storeName\": \"Toko Berkah Jaya\",\n    \"storeAddress\": \"Jl. Merdeka No. 123A, Jakarta Pusat\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/user/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user", "profile"]
+						}
+					},
+					"response": [
+						{
+							"name": "Update Success",
+							"originalRequest": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"John Doe Updated\",\n    \"phoneNumber\": \"081234567891\",\n    \"storeName\": \"Toko Berkah Jaya\",\n    \"storeAddress\": \"Jl. Merdeka No. 123A, Jakarta Pusat\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/user/profile",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "user", "profile"]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"message\": \"Profile updated successfully!\"\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "testEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "testPassword",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
