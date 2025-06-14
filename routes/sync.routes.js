@@ -17,22 +17,4 @@ module.exports = function(app) {
     
     // Download-only synchronization (no upload)
     app.post("/api/sync/download", [verifyToken], controller.synchronizeDownloadOnly);
-    
-    // Get sync status and recent logs
-    app.get("/api/sync/status", [verifyToken], controller.getSyncStatus);
-    
-    // Force full sync (reset last sync time)
-    app.post("/api/sync/reset", [verifyToken], controller.forceFullSync);
-    
-    // Get data summary for user
-    app.get("/api/sync/summary", [verifyToken], controller.getDataSummary);
-    
-    // Backup user data
-    app.get("/api/sync/backup", [verifyToken], controller.backupUserData);
-    
-    // Resolve conflicts manually
-    app.post("/api/sync/resolve-conflicts", [verifyToken], controller.resolveConflicts);
-    
-    // Get detailed sync performance metrics
-    app.get("/api/sync/metrics", [verifyToken], controller.getSyncMetrics);
 };

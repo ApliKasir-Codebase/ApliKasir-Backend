@@ -6,43 +6,34 @@ const jwt = require("jsonwebtoken");
 const { uploadImageToFirebase } = require('../utils/firebaseStorage.helper');
 
 exports.register = async (req, res) => {
-    // Ambil data teks dari req.body
     const { name, email, phoneNumber, storeName, storeAddress, password } = req.body;
-    // Ambil file dari req.file (hasil multer)
     const profileImageFile = req.file;
 
-    let profileImageUrl = null; // Default null
+    let profileImageUrl = null;
 
     try {
-        // 1. Upload gambar ke Firebase jika ada
         if (profileImageFile) {
             console.log("Profile image file detected, attempting upload...");
             try {
                 profileImageUrl = await uploadImageToFirebase(
-                    profileImageFile.buffer, // Buffer gambar
-                    profileImageFile.originalname // Nama file asli
+                    profileImageFile.buffer,
+                    profileImageFile.originalname
                 );
                 console.log("Image uploaded, URL:", profileImageUrl);
             } catch (uploadError) {
-                // Jika upload gagal, lanjutkan registrasi tanpa gambar, tapi log error
                 console.error("Firebase upload failed:", uploadError);
-                // Kirim response error jika upload wajib? Atau biarkan null?
-                // return res.status(500).send({ message: `Failed to upload profile image: ${uploadError}` });
             }
         }
 
-        // 2. Hash password
         const passwordHash = await passwordUtils.hashPassword(password);
 
-        // 3. Insert user ke database MySQL dengan URL gambar (jika ada)
         const sql = `INSERT INTO users (name, email, phoneNumber, storeName, storeAddress, passwordHash, profileImagePath) VALUES (?, ?, ?, ?, ?, ?, ?)`;
         const [result] = await db.query(sql, [
             name, email, phoneNumber, storeName, storeAddress, passwordHash,
-            profileImageUrl // Simpan URL dari Firebase atau null
+            profileImageUrl
         ]);
 
         if (result.insertId) {
-            // 4. Ambil data user yg baru dibuat (tanpa hash)
             const [newUserRows] = await db.query('SELECT id, name, email, phoneNumber, storeName, storeAddress, profileImagePath, created_at, updated_at FROM users WHERE id = ?', [result.insertId]);
              if (newUserRows.length > 0) {
                 res.status(201).send({ message: "User registered successfully!", user: newUserRows[0] });
@@ -50,13 +41,11 @@ exports.register = async (req, res) => {
                 res.status(201).send({ message: "User registered successfully, but failed to fetch details."});
             }
         } else {
-            // Jika insert gagal, coba hapus gambar yg mungkin terupload? (Kompleks)
             res.status(500).send({ message: "Failed to register user record." });
         }
 
     } catch (error) {
         console.error("Registration Error:", error);
-        // Handle duplicate entry (sama seperti sebelumnya)
          if (error.code === 'ER_DUP_ENTRY') {
             if (error.sqlMessage.includes('email')) {
                 return res.status(409).send({ message: "Failed! Email is already in use!" });
@@ -69,9 +58,8 @@ exports.register = async (req, res) => {
     }
 };
 
-// --- Fungsi Login Tetap Sama ---
+// --- Fungsi Login---
 exports.login = async (req, res) => {
-   // ... (kode login tidak berubah) ...
     const { identifier, password } = req.body;
 
     try {
