@@ -122,8 +122,20 @@ jobs:
         run: |
           npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary > jest-coverage.txt
           echo "Jest exit code: $?"
+          # Ambil coverage dari jest-coverage.txt (text-summary)
           COVERAGE=$(awk '/All files/ {getline; print $4}' jest-coverage.txt | cut -d'%' -f1)
+          # Jika gagal, fallback ke coverage/coverage-summary.json
+          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "" ]; then
+            if [ -f coverage/coverage-summary.json ]; then
+              COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json | cut -d'.' -f1)
+              echo "(Fallback) Coverage from coverage-summary.json: $COVERAGE"
+            fi
+          fi
           echo "JEST_COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          if [ -z "$COVERAGE" ]; then
+            echo "[DEBUG] coverage/coverage-summary.json content:" && cat coverage/coverage-summary.json || echo "File not found"
+            echo "[DEBUG] jest-coverage.txt content:" && cat jest-coverage.txt || echo "File not found"
+          fi
         env:
           NODE_ENV: test
           DB_HOST: 127.0.0.1
