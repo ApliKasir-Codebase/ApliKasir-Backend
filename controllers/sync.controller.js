@@ -216,94 +216,112 @@ async function processUploads(connection, userId, localChanges, response, server
  * Upload products to server
  */
 async function uploadProducts(connection, userId, productChanges, response, serverSyncTime) {
-    // Handle new products
     if (productChanges.new?.length > 0) {
-        console.log(`Uploading ${productChanges.new.length} new products...`);
-        
-        for (const product of productChanges.new) {
-            try {
-                const sql = `INSERT INTO products (user_id, nama_produk, kode_produk, jumlah_produk, harga_modal, harga_jual, gambar_produk, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                
-                const [result] = await connection.query(sql, [
-                    userId,
-                    product.nama_produk,
-                    product.kode_produk, 
-                    product.jumlah_produk,
-                    product.harga_modal,
-                    product.harga_jual,
-                    product.gambar_produk,
-                    product.created_at ? new Date(product.created_at) : serverSyncTime,
-                    product.updated_at ? new Date(product.updated_at) : serverSyncTime
-                ]);
-
-                // Return server ID to client for mapping
-                response.serverChanges.products.new.push({
-                    localId: product.id,
-                    serverId: result.insertId,
-                    nama_produk: product.nama_produk
-                });
-
-                response.itemsUploaded++;
-                
-            } catch (error) {
-                console.error(`Error uploading product ${product.nama_produk}:`, error);
-                response.errors.push(`Failed to upload product: ${product.nama_produk} - ${error.message}`);
-            }
-        }
+        await uploadNewProducts(connection, userId, productChanges.new, response, serverSyncTime);
     }
 
-    // Handle updated products
     if (productChanges.updated?.length > 0) {
-        console.log(`Uploading ${productChanges.updated.length} updated products...`);
-        
-        for (const product of productChanges.updated) {
-            try {
-                const sql = `UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, gambar_produk = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
-                
-                const [result] = await connection.query(sql, [
-                    product.nama_produk,
-                    product.kode_produk,
-                    product.jumlah_produk, 
-                    product.harga_modal,
-                    product.harga_jual,
-                    product.gambar_produk,
-                    product.updated_at ? new Date(product.updated_at) : serverSyncTime,
-                    product.server_id,
-                    userId
-                ]);
-
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                } else {
-                    response.errors.push(`Product not found or not owned: ${product.nama_produk}`);
-                }
-                
-            } catch (error) {
-                console.error(`Error updating product ${product.nama_produk}:`, error);
-                response.errors.push(`Failed to update product: ${product.nama_produk} - ${error.message}`);
-            }
-        }
+        await uploadUpdatedProducts(connection, userId, productChanges.updated, response, serverSyncTime);
     }
 
-    // Handle deleted products (soft delete)
     if (productChanges.deleted?.length > 0) {
-        console.log(`Deleting ${productChanges.deleted.length} products...`);
-        
-        for (const productId of productChanges.deleted) {
-            try {
-                const sql = `UPDATE products SET deleted_at = ? WHERE id = ? AND user_id = ?`;
-                const [result] = await connection.query(sql, [serverSyncTime, productId, userId]);
+        await uploadDeletedProducts(connection, userId, productChanges.deleted, response, serverSyncTime);
+    }
+}
 
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                } else {
-                    response.errors.push(`Product not found for deletion: ID ${productId}`);
-                }
-                
-            } catch (error) {
-                console.error(`Error deleting product ${productId}:`, error);
-                response.errors.push(`Failed to delete product: ID ${productId} - ${error.message}`);
+/**
+ * Upload new products to server
+ */
+async function uploadNewProducts(connection, userId, newProducts, response, serverSyncTime) {
+    console.log(`Uploading ${newProducts.length} new products...`);
+    
+    for (const product of newProducts) {
+        try {
+            const sql = `INSERT INTO products (user_id, nama_produk, kode_produk, jumlah_produk, harga_modal, harga_jual, gambar_produk, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            
+            const [result] = await connection.query(sql, [
+                userId,
+                product.nama_produk,
+                product.kode_produk, 
+                product.jumlah_produk,
+                product.harga_modal,
+                product.harga_jual,
+                product.gambar_produk,
+                product.created_at ? new Date(product.created_at) : serverSyncTime,
+                product.updated_at ? new Date(product.updated_at) : serverSyncTime
+            ]);
+
+            // Return server ID to client for mapping
+            response.serverChanges.products.new.push({
+                localId: product.id,
+                serverId: result.insertId,
+                nama_produk: product.nama_produk
+            });
+
+            response.itemsUploaded++;
+            
+        } catch (error) {
+            console.error(`Error uploading product ${product.nama_produk}:`, error);
+            response.errors.push(`Failed to upload product: ${product.nama_produk} - ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Upload updated products to server
+ */
+async function uploadUpdatedProducts(connection, userId, updatedProducts, response, serverSyncTime) {
+    console.log(`Uploading ${updatedProducts.length} updated products...`);
+    
+    for (const product of updatedProducts) {
+        try {
+            const sql = `UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, gambar_produk = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
+            
+            const [result] = await connection.query(sql, [
+                product.nama_produk,
+                product.kode_produk,
+                product.jumlah_produk, 
+                product.harga_modal,
+                product.harga_jual,
+                product.gambar_produk,
+                product.updated_at ? new Date(product.updated_at) : serverSyncTime,
+                product.server_id,
+                userId
+            ]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
+            } else {
+                response.errors.push(`Product not found or not owned: ${product.nama_produk}`);
             }
+            
+        } catch (error) {
+            console.error(`Error updating product ${product.nama_produk}:`, error);
+            response.errors.push(`Failed to update product: ${product.nama_produk} - ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Upload deleted products to server (soft delete)
+ */
+async function uploadDeletedProducts(connection, userId, deletedProductIds, response, serverSyncTime) {
+    console.log(`Deleting ${deletedProductIds.length} products...`);
+    
+    for (const productId of deletedProductIds) {
+        try {
+            const sql = `UPDATE products SET deleted_at = ? WHERE id = ? AND user_id = ?`;
+            const [result] = await connection.query(sql, [serverSyncTime, productId, userId]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
+            } else {
+                response.errors.push(`Product not found for deletion: ID ${productId}`);
+            }
+            
+        } catch (error) {
+            console.error(`Error deleting product ${productId}:`, error);
+            response.errors.push(`Failed to delete product: ID ${productId} - ${error.message}`);
         }
     }
 }
@@ -312,83 +330,101 @@ async function uploadProducts(connection, userId, productChanges, response, serv
  * Upload customers to server
  */
 async function uploadCustomers(connection, userId, customerChanges, response, serverSyncTime) {
-    // Handle new customers
     if (customerChanges.new?.length > 0) {
-        console.log(`Uploading ${customerChanges.new.length} new customers...`);
-        
-        for (const customer of customerChanges.new) {
-            try {
-                const sql = `INSERT INTO customers (user_id, nama_pelanggan, nomor_telepon, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`;
-                
-                const [result] = await connection.query(sql, [
-                    userId,
-                    customer.nama_pelanggan,
-                    customer.nomor_telepon,
-                    customer.created_at ? new Date(customer.created_at) : serverSyncTime,
-                    customer.updated_at ? new Date(customer.updated_at) : serverSyncTime
-                ]);
-
-                response.serverChanges.customers.new.push({
-                    localId: customer.id,
-                    serverId: result.insertId,
-                    nama_pelanggan: customer.nama_pelanggan
-                });
-
-                response.itemsUploaded++;
-                
-            } catch (error) {
-                console.error(`Error uploading customer ${customer.nama_pelanggan}:`, error);
-                response.errors.push(`Failed to upload customer: ${customer.nama_pelanggan} - ${error.message}`);
-            }
-        }
+        await uploadNewCustomers(connection, userId, customerChanges.new, response, serverSyncTime);
     }
 
-    // Handle updated customers
     if (customerChanges.updated?.length > 0) {
-        console.log(`Uploading ${customerChanges.updated.length} updated customers...`);
-        
-        for (const customer of customerChanges.updated) {
-            try {
-                const sql = `UPDATE customers SET nama_pelanggan = ?, nomor_telepon = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
-                
-                const [result] = await connection.query(sql, [
-                    customer.nama_pelanggan,
-                    customer.nomor_telepon,
-                    customer.updated_at ? new Date(customer.updated_at) : serverSyncTime,
-                    customer.server_id,
-                    userId
-                ]);
-
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                } else {
-                    response.errors.push(`Customer not found or not owned: ${customer.nama_pelanggan}`);
-                }
-                
-            } catch (error) {
-                console.error(`Error updating customer ${customer.nama_pelanggan}:`, error);
-                response.errors.push(`Failed to update customer: ${customer.nama_pelanggan} - ${error.message}`);
-            }
-        }
+        await uploadUpdatedCustomers(connection, userId, customerChanges.updated, response, serverSyncTime);
     }
 
-    // Handle deleted customers
     if (customerChanges.deleted?.length > 0) {
-        console.log(`Deleting ${customerChanges.deleted.length} customers...`);
-        
-        for (const customerId of customerChanges.deleted) {
-            try {
-                const sql = `UPDATE customers SET deleted_at = ? WHERE id = ? AND user_id = ?`;
-                const [result] = await connection.query(sql, [serverSyncTime, customerId, userId]);
+        await uploadDeletedCustomers(connection, userId, customerChanges.deleted, response, serverSyncTime);
+    }
+}
 
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                }
-                
-            } catch (error) {
-                console.error(`Error deleting customer ${customerId}:`, error);
-                response.errors.push(`Failed to delete customer: ID ${customerId} - ${error.message}`);
+/**
+ * Upload new customers to server
+ */
+async function uploadNewCustomers(connection, userId, newCustomers, response, serverSyncTime) {
+    console.log(`Uploading ${newCustomers.length} new customers...`);
+    
+    for (const customer of newCustomers) {
+        try {
+            const sql = `INSERT INTO customers (user_id, nama_pelanggan, nomor_telepon, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`;
+            
+            const [result] = await connection.query(sql, [
+                userId,
+                customer.nama_pelanggan,
+                customer.nomor_telepon,
+                customer.created_at ? new Date(customer.created_at) : serverSyncTime,
+                customer.updated_at ? new Date(customer.updated_at) : serverSyncTime
+            ]);
+
+            response.serverChanges.customers.new.push({
+                localId: customer.id,
+                serverId: result.insertId,
+                nama_pelanggan: customer.nama_pelanggan
+            });
+
+            response.itemsUploaded++;
+            
+        } catch (error) {
+            console.error(`Error uploading customer ${customer.nama_pelanggan}:`, error);
+            response.errors.push(`Failed to upload customer: ${customer.nama_pelanggan} - ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Upload updated customers to server
+ */
+async function uploadUpdatedCustomers(connection, userId, updatedCustomers, response, serverSyncTime) {
+    console.log(`Uploading ${updatedCustomers.length} updated customers...`);
+    
+    for (const customer of updatedCustomers) {
+        try {
+            const sql = `UPDATE customers SET nama_pelanggan = ?, nomor_telepon = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
+            
+            const [result] = await connection.query(sql, [
+                customer.nama_pelanggan,
+                customer.nomor_telepon,
+                customer.updated_at ? new Date(customer.updated_at) : serverSyncTime,
+                customer.server_id,
+                userId
+            ]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
+            } else {
+                response.errors.push(`Customer not found or not owned: ${customer.nama_pelanggan}`);
             }
+            
+        } catch (error) {
+            console.error(`Error updating customer ${customer.nama_pelanggan}:`, error);
+            response.errors.push(`Failed to update customer: ${customer.nama_pelanggan} - ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Upload deleted customers to server (soft delete)
+ */
+async function uploadDeletedCustomers(connection, userId, deletedCustomerIds, response, serverSyncTime) {
+    console.log(`Deleting ${deletedCustomerIds.length} customers...`);
+    
+    for (const customerId of deletedCustomerIds) {
+        try {
+            const sql = `UPDATE customers SET deleted_at = ? WHERE id = ? AND user_id = ?`;
+            const [result] = await connection.query(sql, [serverSyncTime, customerId, userId]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
+            }
+            
+        } catch (error) {
+            console.error(`Error deleting customer ${customerId}:`, error);
+            response.errors.push(`Failed to delete customer: ID ${customerId} - ${error.message}`);
         }
     }
 }
@@ -397,100 +433,131 @@ async function uploadCustomers(connection, userId, customerChanges, response, se
  * Upload transactions to server  
  */
 async function uploadTransactions(connection, userId, transactionChanges, response, serverSyncTime) {
-    // Handle new transactions
     if (transactionChanges.new?.length > 0) {
-        console.log(`Uploading ${transactionChanges.new.length} new transactions...`);
-        
-        for (const transaction of transactionChanges.new) {
-            try {
-                // Map local customer ID to server customer ID if needed
-                let serverCustomerId = transaction.id_pelanggan;
-                if (transaction.id_pelanggan) {
-                    const [customerResult] = await connection.query(
-                        'SELECT id FROM customers WHERE user_id = ? AND id = ?',
-                        [userId, transaction.id_pelanggan]
-                    );
-                    serverCustomerId = customerResult.length > 0 ? customerResult[0].id : null;
-                }
-
-                const sql = `INSERT INTO transactions (user_id, tanggal_transaksi, total_belanja, total_modal, metode_pembayaran, status_pembayaran, id_pelanggan, detail_items, jumlah_bayar, jumlah_kembali, id_transaksi_hutang, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-                
-                const [result] = await connection.query(sql, [
-                    userId,
-                    new Date(transaction.tanggal_transaksi),
-                    transaction.total_belanja,
-                    transaction.total_modal,
-                    transaction.metode_pembayaran,
-                    transaction.status_pembayaran,
-                    serverCustomerId,
-                    JSON.stringify(transaction.detail_items),
-                    transaction.jumlah_bayar,
-                    transaction.jumlah_kembali,
-                    transaction.id_transaksi_hutang,
-                    transaction.created_at ? new Date(transaction.created_at) : serverSyncTime,
-                    transaction.updated_at ? new Date(transaction.updated_at) : serverSyncTime
-                ]);
-
-                response.serverChanges.transactions.new.push({
-                    localId: transaction.id,
-                    serverId: result.insertId,
-                    tanggal_transaksi: transaction.tanggal_transaksi
-                });
-
-                response.itemsUploaded++;
-                
-            } catch (error) {
-                console.error(`Error uploading transaction:`, error);
-                response.errors.push(`Failed to upload transaction: ${error.message}`);
-            }
-        }
+        await uploadNewTransactions(connection, userId, transactionChanges.new, response, serverSyncTime);
     }
 
-    // Handle updated transactions
     if (transactionChanges.updated?.length > 0) {
-        console.log(`Uploading ${transactionChanges.updated.length} updated transactions...`);
-        
-        for (const transaction of transactionChanges.updated) {
-            try {
-                const sql = `UPDATE transactions SET status_pembayaran = ?, jumlah_bayar = ?, jumlah_kembali = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
-                
-                const [result] = await connection.query(sql, [
-                    transaction.status_pembayaran,
-                    transaction.jumlah_bayar,
-                    transaction.jumlah_kembali,
-                    transaction.updated_at ? new Date(transaction.updated_at) : serverSyncTime,
-                    transaction.server_id,
-                    userId
-                ]);
-
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                }
-                
-            } catch (error) {
-                console.error(`Error updating transaction:`, error);
-                response.errors.push(`Failed to update transaction: ${error.message}`);
-            }
-        }
+        await uploadUpdatedTransactions(connection, userId, transactionChanges.updated, response, serverSyncTime);
     }
 
-    // Handle deleted transactions
     if (transactionChanges.deleted?.length > 0) {
-        console.log(`Deleting ${transactionChanges.deleted.length} transactions...`);
-        
-        for (const transactionId of transactionChanges.deleted) {
-            try {
-                const sql = `UPDATE transactions SET deleted_at = ? WHERE id = ? AND user_id = ?`;
-                const [result] = await connection.query(sql, [serverSyncTime, transactionId, userId]);
+        await uploadDeletedTransactions(connection, userId, transactionChanges.deleted, response, serverSyncTime);
+    }
+}
 
-                if (result.affectedRows > 0) {
-                    response.itemsUploaded++;
-                }
-                
-            } catch (error) {
-                console.error(`Error deleting transaction ${transactionId}:`, error);
-                response.errors.push(`Failed to delete transaction: ID ${transactionId} - ${error.message}`);
+/**
+ * Upload new transactions to server
+ */
+async function uploadNewTransactions(connection, userId, newTransactions, response, serverSyncTime) {
+    console.log(`Uploading ${newTransactions.length} new transactions...`);
+    
+    for (const transaction of newTransactions) {
+        try {
+            const serverCustomerId = await getServerCustomerId(connection, userId, transaction.id_pelanggan);
+            await insertNewTransaction(connection, userId, transaction, serverCustomerId, response, serverSyncTime);
+        } catch (error) {
+            console.error(`Error uploading transaction:`, error);
+            response.errors.push(`Failed to upload transaction: ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Get server customer ID for transaction
+ */
+async function getServerCustomerId(connection, userId, localCustomerId) {
+    if (!localCustomerId) {
+        return null;
+    }
+    
+    const [customerResult] = await connection.query(
+        'SELECT id FROM customers WHERE user_id = ? AND id = ?',
+        [userId, localCustomerId]
+    );
+    
+    return customerResult.length > 0 ? customerResult[0].id : null;
+}
+
+/**
+ * Insert new transaction into database
+ */
+async function insertNewTransaction(connection, userId, transaction, serverCustomerId, response, serverSyncTime) {
+    const sql = `INSERT INTO transactions (user_id, tanggal_transaksi, total_belanja, total_modal, metode_pembayaran, status_pembayaran, id_pelanggan, detail_items, jumlah_bayar, jumlah_kembali, id_transaksi_hutang, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    
+    const [result] = await connection.query(sql, [
+        userId,
+        new Date(transaction.tanggal_transaksi),
+        transaction.total_belanja,
+        transaction.total_modal,
+        transaction.metode_pembayaran,
+        transaction.status_pembayaran,
+        serverCustomerId,
+        JSON.stringify(transaction.detail_items),
+        transaction.jumlah_bayar,
+        transaction.jumlah_kembali,
+        transaction.id_transaksi_hutang,
+        transaction.created_at ? new Date(transaction.created_at) : serverSyncTime,
+        transaction.updated_at ? new Date(transaction.updated_at) : serverSyncTime
+    ]);
+
+    response.serverChanges.transactions.new.push({
+        localId: transaction.id,
+        serverId: result.insertId,
+        tanggal_transaksi: transaction.tanggal_transaksi
+    });
+
+    response.itemsUploaded++;
+}
+
+/**
+ * Upload updated transactions to server
+ */
+async function uploadUpdatedTransactions(connection, userId, updatedTransactions, response, serverSyncTime) {
+    console.log(`Uploading ${updatedTransactions.length} updated transactions...`);
+    
+    for (const transaction of updatedTransactions) {
+        try {
+            const sql = `UPDATE transactions SET status_pembayaran = ?, jumlah_bayar = ?, jumlah_kembali = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
+            
+            const [result] = await connection.query(sql, [
+                transaction.status_pembayaran,
+                transaction.jumlah_bayar,
+                transaction.jumlah_kembali,
+                transaction.updated_at ? new Date(transaction.updated_at) : serverSyncTime,
+                transaction.server_id,
+                userId
+            ]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
             }
+            
+        } catch (error) {
+            console.error(`Error updating transaction:`, error);
+            response.errors.push(`Failed to update transaction: ${error.message}`);
+        }
+    }
+}
+
+/**
+ * Upload deleted transactions to server (soft delete)
+ */
+async function uploadDeletedTransactions(connection, userId, deletedTransactionIds, response, serverSyncTime) {
+    console.log(`Deleting ${deletedTransactionIds.length} transactions...`);
+    
+    for (const transactionId of deletedTransactionIds) {
+        try {
+            const sql = `UPDATE transactions SET deleted_at = ? WHERE id = ? AND user_id = ?`;
+            const [result] = await connection.query(sql, [serverSyncTime, transactionId, userId]);
+
+            if (result.affectedRows > 0) {
+                response.itemsUploaded++;
+            }
+            
+        } catch (error) {
+            console.error(`Error deleting transaction ${transactionId}:`, error);
+            response.errors.push(`Failed to delete transaction: ID ${transactionId} - ${error.message}`);
         }
     }
 }
@@ -607,141 +674,218 @@ async function detectConflicts(connection, userId, localChanges, response) {
 async function detectProductConflicts(connection, userId, localProducts, response) {
     for (const localProduct of localProducts) {
         try {
-            const [serverProducts] = await connection.query(
-                'SELECT id, nama_produk, kode_produk, jumlah_produk, harga_modal, harga_jual, updated_at, created_at FROM products WHERE id = ? AND user_id = ?',
-                [localProduct.server_id, userId]
-            );
-            
-            if (serverProducts.length === 0) {
-                response.conflicts.push({
-                    type: 'product',
-                    conflictType: 'missing_on_server',
-                    id: localProduct.server_id,
-                    localId: localProduct.id,
-                    message: 'Product was deleted on server but updated locally',
-                    resolution: 'recreate_on_server',
-                    localData: localProduct,
-                    timestamp: new Date().toISOString()
-                });
-                continue;
-            }
-            
-            const serverProduct = serverProducts[0];
-            const serverUpdatedAt = new Date(serverProduct.updated_at);
-            const localUpdatedAt = new Date(localProduct.updated_at);
-            
-            // Check if there's a real conflict (both modified after last sync)
-            if (Math.abs(serverUpdatedAt - localUpdatedAt) > 5000) { // 5 second tolerance for timestamp differences
-                
-                // Analyze the type of conflict
-                const conflicts = [];
-                
-                if (serverProduct.nama_produk !== localProduct.nama_produk) {
-                    conflicts.push({
-                        field: 'nama_produk',
-                        serverValue: serverProduct.nama_produk,
-                        localValue: localProduct.nama_produk
-                    });
-                }
-                
-                if (serverProduct.kode_produk !== localProduct.kode_produk) {
-                    conflicts.push({
-                        field: 'kode_produk',
-                        serverValue: serverProduct.kode_produk,
-                        localValue: localProduct.kode_produk
-                    });
-                }
-                
-                if (serverProduct.jumlah_produk !== localProduct.jumlah_produk) {
-                    conflicts.push({
-                        field: 'jumlah_produk',
-                        serverValue: serverProduct.jumlah_produk,
-                        localValue: localProduct.jumlah_produk,
-                        autoResolve: 'sum' // Automatically sum stock quantities
-                    });
-                }
-                
-                if (Math.abs(serverProduct.harga_jual - localProduct.harga_jual) > 0.01) {
-                    conflicts.push({
-                        field: 'harga_jual',
-                        serverValue: serverProduct.harga_jual,
-                        localValue: localProduct.harga_jual,
-                        autoResolve: 'latest' // Use latest timestamp
-                    });
-                }
-                
-                if (Math.abs(serverProduct.harga_modal - localProduct.harga_modal) > 0.01) {
-                    conflicts.push({
-                        field: 'harga_modal',
-                        serverValue: serverProduct.harga_modal,
-                        localValue: localProduct.harga_modal,
-                        autoResolve: 'latest'
-                    });
-                }
-                
-                if (conflicts.length > 0) {
-                    // Determine resolution strategy
-                    let resolutionStrategy = 'manual';
-                    let resolvedData = { ...serverProduct };
-                    
-                    // Auto-resolve some conflicts
-                    for (const conflict of conflicts) {
-                        if (conflict.autoResolve === 'sum' && conflict.field === 'jumlah_produk') {
-                            resolvedData.jumlah_produk = serverProduct.jumlah_produk + localProduct.jumlah_produk;
-                            resolutionStrategy = 'auto_sum_stock';
-                        } else if (conflict.autoResolve === 'latest') {
-                            if (localUpdatedAt > serverUpdatedAt) {
-                                resolvedData[conflict.field] = localProduct[conflict.field];
-                            }
-                            resolutionStrategy = 'auto_latest_wins';
-                        }
-                    }
-                    
-                    response.conflicts.push({
-                        type: 'product',
-                        conflictType: 'data_mismatch',
-                        id: localProduct.server_id,
-                        localId: localProduct.id,
-                        message: `Product data conflicts detected in ${conflicts.length} field(s)`,
-                        conflicts: conflicts,
-                        resolution: resolutionStrategy,
-                        serverUpdatedAt: serverUpdatedAt.toISOString(),
-                        localUpdatedAt: localUpdatedAt.toISOString(),
-                        serverData: serverProduct,
-                        localData: localProduct,
-                        resolvedData: resolutionStrategy.startsWith('auto') ? resolvedData : null,
-                        timestamp: new Date().toISOString()
-                    });
-                    
-                    // Apply auto-resolution if possible
-                    if (resolutionStrategy.startsWith('auto')) {
-                        try {
-                            await connection.query(
-                                'UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, updated_at = ? WHERE id = ? AND user_id = ?',
-                                [
-                                    resolvedData.nama_produk,
-                                    resolvedData.kode_produk,
-                                    resolvedData.jumlah_produk,
-                                    resolvedData.harga_modal,
-                                    resolvedData.harga_jual,
-                                    new Date(),
-                                    localProduct.server_id,
-                                    userId
-                                ]
-                            );
-                            
-                            console.log(`Auto-resolved product conflict for ID ${localProduct.server_id} using ${resolutionStrategy}`);
-                        } catch (autoResolveError) {
-                            console.error(`Failed to auto-resolve product conflict:`, autoResolveError);
-                        }
-                    }
-                }
-            }
-            
+            await processProductConflict(connection, userId, localProduct, response);
         } catch (error) {
             console.error(`Error detecting conflict for product ${localProduct.server_id}:`, error);
             response.errors.push(`Product conflict detection error: ${error.message}`);
         }
+    }
+}
+
+/**
+ * Process conflict detection for a single product
+ */
+async function processProductConflict(connection, userId, localProduct, response) {
+    const serverProduct = await getServerProduct(connection, userId, localProduct.server_id);
+    
+    if (!serverProduct) {
+        addMissingProductConflict(response, localProduct);
+        return;
+    }
+    
+    const serverUpdatedAt = new Date(serverProduct.updated_at);
+    const localUpdatedAt = new Date(localProduct.updated_at);
+    
+    if (hasTimestampConflict(serverUpdatedAt, localUpdatedAt)) {
+        await handleProductDataMismatch(connection, userId, localProduct, serverProduct, response);
+    }
+}
+
+/**
+ * Get server product by ID
+ */
+async function getServerProduct(connection, userId, productId) {
+    const [serverProducts] = await connection.query(
+        'SELECT id, nama_produk, kode_produk, jumlah_produk, harga_modal, harga_jual, updated_at, created_at FROM products WHERE id = ? AND user_id = ?',
+        [productId, userId]
+    );
+    
+    return serverProducts.length > 0 ? serverProducts[0] : null;
+}
+
+/**
+ * Add missing product conflict to response
+ */
+function addMissingProductConflict(response, localProduct) {
+    response.conflicts.push({
+        type: 'product',
+        conflictType: 'missing_on_server',
+        id: localProduct.server_id,
+        localId: localProduct.id,
+        message: 'Product was deleted on server but updated locally',
+        resolution: 'recreate_on_server',
+        localData: localProduct,
+        timestamp: new Date().toISOString()
+    });
+}
+
+/**
+ * Check if there's a timestamp conflict between server and local data
+ */
+function hasTimestampConflict(serverUpdatedAt, localUpdatedAt) {
+    return Math.abs(serverUpdatedAt - localUpdatedAt) > 5000; // 5 second tolerance
+}
+
+/**
+ * Handle product data mismatch conflicts
+ */
+async function handleProductDataMismatch(connection, userId, localProduct, serverProduct, response) {
+    const conflicts = analyzeProductFieldConflicts(serverProduct, localProduct);
+    
+    if (conflicts.length === 0) {
+        return;
+    }
+    
+    const { resolutionStrategy, resolvedData } = resolveProductConflicts(
+        conflicts, 
+        serverProduct, 
+        localProduct
+    );
+    
+    const conflictRecord = createProductConflictRecord(
+        localProduct, 
+        serverProduct, 
+        conflicts, 
+        resolutionStrategy, 
+        resolvedData
+    );
+    
+    response.conflicts.push(conflictRecord);
+    
+    if (resolutionStrategy.startsWith('auto')) {
+        await applyAutoResolution(connection, userId, localProduct.server_id, resolvedData, resolutionStrategy);
+    }
+}
+
+/**
+ * Analyze conflicts between server and local product fields
+ */
+function analyzeProductFieldConflicts(serverProduct, localProduct) {
+    const conflicts = [];
+    
+    if (serverProduct.nama_produk !== localProduct.nama_produk) {
+        conflicts.push({
+            field: 'nama_produk',
+            serverValue: serverProduct.nama_produk,
+            localValue: localProduct.nama_produk
+        });
+    }
+    
+    if (serverProduct.kode_produk !== localProduct.kode_produk) {
+        conflicts.push({
+            field: 'kode_produk',
+            serverValue: serverProduct.kode_produk,
+            localValue: localProduct.kode_produk
+        });
+    }
+    
+    if (serverProduct.jumlah_produk !== localProduct.jumlah_produk) {
+        conflicts.push({
+            field: 'jumlah_produk',
+            serverValue: serverProduct.jumlah_produk,
+            localValue: localProduct.jumlah_produk,
+            autoResolve: 'sum'
+        });
+    }
+    
+    if (Math.abs(serverProduct.harga_jual - localProduct.harga_jual) > 0.01) {
+        conflicts.push({
+            field: 'harga_jual',
+            serverValue: serverProduct.harga_jual,
+            localValue: localProduct.harga_jual,
+            autoResolve: 'latest'
+        });
+    }
+    
+    if (Math.abs(serverProduct.harga_modal - localProduct.harga_modal) > 0.01) {
+        conflicts.push({
+            field: 'harga_modal',
+            serverValue: serverProduct.harga_modal,
+            localValue: localProduct.harga_modal,
+            autoResolve: 'latest'
+        });
+    }
+    
+    return conflicts;
+}
+
+/**
+ * Resolve product conflicts and determine strategy
+ */
+function resolveProductConflicts(conflicts, serverProduct, localProduct) {
+    let resolutionStrategy = 'manual';
+    let resolvedData = { ...serverProduct };
+    const serverUpdatedAt = new Date(serverProduct.updated_at);
+    const localUpdatedAt = new Date(localProduct.updated_at);
+    
+    for (const conflict of conflicts) {
+        if (conflict.autoResolve === 'sum' && conflict.field === 'jumlah_produk') {
+            resolvedData.jumlah_produk = serverProduct.jumlah_produk + localProduct.jumlah_produk;
+            resolutionStrategy = 'auto_sum_stock';
+        } else if (conflict.autoResolve === 'latest') {
+            if (localUpdatedAt > serverUpdatedAt) {
+                resolvedData[conflict.field] = localProduct[conflict.field];
+            }
+            resolutionStrategy = 'auto_latest_wins';
+        }
+    }
+    
+    return { resolutionStrategy, resolvedData };
+}
+
+/**
+ * Create product conflict record for response
+ */
+function createProductConflictRecord(localProduct, serverProduct, conflicts, resolutionStrategy, resolvedData) {
+    return {
+        type: 'product',
+        conflictType: 'data_mismatch',
+        id: localProduct.server_id,
+        localId: localProduct.id,
+        message: `Product data conflicts detected in ${conflicts.length} field(s)`,
+        conflicts: conflicts,
+        resolution: resolutionStrategy,
+        serverUpdatedAt: new Date(serverProduct.updated_at).toISOString(),
+        localUpdatedAt: new Date(localProduct.updated_at).toISOString(),
+        serverData: serverProduct,
+        localData: localProduct,
+        resolvedData: resolutionStrategy.startsWith('auto') ? resolvedData : null,
+        timestamp: new Date().toISOString()
+    };
+}
+
+/**
+ * Apply automatic resolution to the database
+ */
+async function applyAutoResolution(connection, userId, productId, resolvedData, resolutionStrategy) {
+    try {
+        await connection.query(
+            'UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+            [
+                resolvedData.nama_produk,
+                resolvedData.kode_produk,
+                resolvedData.jumlah_produk,
+                resolvedData.harga_modal,
+                resolvedData.harga_jual,
+                new Date(),
+                productId,
+                userId
+            ]
+        );
+        
+        console.log(`Auto-resolved product conflict for ID ${productId} using ${resolutionStrategy}`);
+    } catch (autoResolveError) {
+        console.error(`Failed to auto-resolve product conflict:`, autoResolveError);
     }
 }
 
@@ -751,66 +895,7 @@ async function detectProductConflicts(connection, userId, localProducts, respons
 async function detectCustomerConflicts(connection, userId, localCustomers, response) {
     for (const localCustomer of localCustomers) {
         try {
-            const [serverCustomers] = await connection.query(
-                'SELECT id, nama_pelanggan, nomor_telepon, updated_at FROM customers WHERE id = ? AND user_id = ?',
-                [localCustomer.server_id, userId]
-            );
-            
-            if (serverCustomers.length === 0) {
-                response.conflicts.push({
-                    type: 'customer',
-                    conflictType: 'missing_on_server',
-                    id: localCustomer.server_id,
-                    localId: localCustomer.id,
-                    message: 'Customer was deleted on server but updated locally',
-                    resolution: 'recreate_on_server',
-                    localData: localCustomer,
-                    timestamp: new Date().toISOString()
-                });
-                continue;
-            }
-            
-            const serverCustomer = serverCustomers[0];
-            const serverUpdatedAt = new Date(serverCustomer.updated_at);
-            const localUpdatedAt = new Date(localCustomer.updated_at);
-            
-            if (Math.abs(serverUpdatedAt - localUpdatedAt) > 5000) {
-                const conflicts = [];
-                
-                if (serverCustomer.nama_pelanggan !== localCustomer.nama_pelanggan) {
-                    conflicts.push({
-                        field: 'nama_pelanggan',
-                        serverValue: serverCustomer.nama_pelanggan,
-                        localValue: localCustomer.nama_pelanggan
-                    });
-                }
-                
-                if (serverCustomer.nomor_telepon !== localCustomer.nomor_telepon) {
-                    conflicts.push({
-                        field: 'nomor_telepon',
-                        serverValue: serverCustomer.nomor_telepon,
-                        localValue: localCustomer.nomor_telepon
-                    });
-                }
-                
-                if (conflicts.length > 0) {
-                    response.conflicts.push({
-                        type: 'customer',
-                        conflictType: 'data_mismatch',
-                        id: localCustomer.server_id,
-                        localId: localCustomer.id,
-                        message: `Customer data conflicts detected in ${conflicts.length} field(s)`,
-                        conflicts: conflicts,
-                        resolution: 'manual',
-                        serverUpdatedAt: serverUpdatedAt.toISOString(),
-                        localUpdatedAt: localUpdatedAt.toISOString(),
-                        serverData: serverCustomer,
-                        localData: localCustomer,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            }
-            
+            await processCustomerConflict(connection, userId, localCustomer, response);
         } catch (error) {
             console.error(`Error detecting conflict for customer ${localCustomer.server_id}:`, error);
             response.errors.push(`Customer conflict detection error: ${error.message}`);
@@ -819,76 +904,215 @@ async function detectCustomerConflicts(connection, userId, localCustomers, respo
 }
 
 /**
+ * Process conflict detection for a single customer
+ */
+async function processCustomerConflict(connection, userId, localCustomer, response) {
+    const serverCustomer = await getServerCustomer(connection, userId, localCustomer.server_id);
+    
+    if (!serverCustomer) {
+        addMissingCustomerConflict(response, localCustomer);
+        return;
+    }
+    
+    const serverUpdatedAt = new Date(serverCustomer.updated_at);
+    const localUpdatedAt = new Date(localCustomer.updated_at);
+    
+    if (hasTimestampConflict(serverUpdatedAt, localUpdatedAt)) {
+        await handleCustomerDataMismatch(localCustomer, serverCustomer, response);
+    }
+}
+
+/**
+ * Get server customer by ID
+ */
+async function getServerCustomer(connection, userId, customerId) {
+    const [serverCustomers] = await connection.query(
+        'SELECT id, nama_pelanggan, nomor_telepon, updated_at FROM customers WHERE id = ? AND user_id = ?',
+        [customerId, userId]
+    );
+    
+    return serverCustomers.length > 0 ? serverCustomers[0] : null;
+}
+
+/**
+ * Add missing customer conflict to response
+ */
+function addMissingCustomerConflict(response, localCustomer) {
+    response.conflicts.push({
+        type: 'customer',
+        conflictType: 'missing_on_server',
+        id: localCustomer.server_id,
+        localId: localCustomer.id,
+        message: 'Customer was deleted on server but updated locally',
+        resolution: 'recreate_on_server',
+        localData: localCustomer,
+        timestamp: new Date().toISOString()
+    });
+}
+
+/**
+ * Handle customer data mismatch conflicts
+ */
+async function handleCustomerDataMismatch(localCustomer, serverCustomer, response) {
+    const conflicts = analyzeCustomerFieldConflicts(serverCustomer, localCustomer);
+    
+    if (conflicts.length > 0) {
+        const serverUpdatedAt = new Date(serverCustomer.updated_at);
+        const localUpdatedAt = new Date(localCustomer.updated_at);
+        
+        response.conflicts.push({
+            type: 'customer',
+            conflictType: 'data_mismatch',
+            id: localCustomer.server_id,
+            localId: localCustomer.id,
+            message: `Customer data conflicts detected in ${conflicts.length} field(s)`,
+            conflicts: conflicts,
+            resolution: 'manual',
+            serverUpdatedAt: serverUpdatedAt.toISOString(),
+            localUpdatedAt: localUpdatedAt.toISOString(),
+            serverData: serverCustomer,
+            localData: localCustomer,
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+/**
+ * Analyze conflicts between server and local customer fields
+ */
+function analyzeCustomerFieldConflicts(serverCustomer, localCustomer) {
+    const conflicts = [];
+    
+    if (serverCustomer.nama_pelanggan !== localCustomer.nama_pelanggan) {
+        conflicts.push({
+            field: 'nama_pelanggan',
+            serverValue: serverCustomer.nama_pelanggan,
+            localValue: localCustomer.nama_pelanggan
+        });
+    }
+    
+    if (serverCustomer.nomor_telepon !== localCustomer.nomor_telepon) {
+        conflicts.push({
+            field: 'nomor_telepon',
+            serverValue: serverCustomer.nomor_telepon,
+            localValue: localCustomer.nomor_telepon
+        });
+    }
+    
+    return conflicts;
+}
+
+/**
  * Detect transaction conflicts
  */
 async function detectTransactionConflicts(connection, userId, localTransactions, response) {
     for (const localTransaction of localTransactions) {
         try {
-            const [serverTransactions] = await connection.query(
-                'SELECT id, total_belanja, status_pembayaran, metode_pembayaran, updated_at FROM transactions WHERE id = ? AND user_id = ?',
-                [localTransaction.server_id, userId]
-            );
-            
-            if (serverTransactions.length === 0) {
-                response.conflicts.push({
-                    type: 'transaction',
-                    conflictType: 'missing_on_server',
-                    id: localTransaction.server_id,
-                    localId: localTransaction.id,
-                    message: 'Transaction was deleted on server but updated locally',
-                    resolution: 'manual_review',
-                    localData: localTransaction,
-                    timestamp: new Date().toISOString()
-                });
-                continue;
-            }
-            
-            const serverTransaction = serverTransactions[0];
-            const serverUpdatedAt = new Date(serverTransaction.updated_at);
-            const localUpdatedAt = new Date(localTransaction.updated_at);
-            
-            if (Math.abs(serverUpdatedAt - localUpdatedAt) > 5000) {
-                const conflicts = [];
-                
-                if (Math.abs(serverTransaction.total_belanja - localTransaction.total_belanja) > 0.01) {
-                    conflicts.push({
-                        field: 'total_belanja',
-                        serverValue: serverTransaction.total_belanja,
-                        localValue: localTransaction.total_belanja
-                    });
-                }
-                
-                if (serverTransaction.status_pembayaran !== localTransaction.status_pembayaran) {
-                    conflicts.push({
-                        field: 'status_pembayaran',
-                        serverValue: serverTransaction.status_pembayaran,
-                        localValue: localTransaction.status_pembayaran
-                    });
-                }
-                
-                if (conflicts.length > 0) {
-                    response.conflicts.push({
-                        type: 'transaction',
-                        conflictType: 'data_mismatch',
-                        id: localTransaction.server_id,
-                        localId: localTransaction.id,
-                        message: `Transaction data conflicts detected in ${conflicts.length} field(s)`,
-                        conflicts: conflicts,
-                        resolution: 'manual_review', // Transactions should be manually reviewed
-                        serverUpdatedAt: serverUpdatedAt.toISOString(),
-                        localUpdatedAt: localUpdatedAt.toISOString(),
-                        serverData: serverTransaction,
-                        localData: localTransaction,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            }
-            
+            await processTransactionConflict(connection, userId, localTransaction, response);
         } catch (error) {
             console.error(`Error detecting conflict for transaction ${localTransaction.server_id}:`, error);
             response.errors.push(`Transaction conflict detection error: ${error.message}`);
         }
     }
+}
+
+/**
+ * Process conflict detection for a single transaction
+ */
+async function processTransactionConflict(connection, userId, localTransaction, response) {
+    const serverTransaction = await getServerTransaction(connection, userId, localTransaction.server_id);
+    
+    if (!serverTransaction) {
+        addMissingTransactionConflict(response, localTransaction);
+        return;
+    }
+    
+    const serverUpdatedAt = new Date(serverTransaction.updated_at);
+    const localUpdatedAt = new Date(localTransaction.updated_at);
+    
+    if (hasTimestampConflict(serverUpdatedAt, localUpdatedAt)) {
+        await handleTransactionDataMismatch(localTransaction, serverTransaction, response);
+    }
+}
+
+/**
+ * Get server transaction by ID
+ */
+async function getServerTransaction(connection, userId, transactionId) {
+    const [serverTransactions] = await connection.query(
+        'SELECT id, total_belanja, status_pembayaran, metode_pembayaran, updated_at FROM transactions WHERE id = ? AND user_id = ?',
+        [transactionId, userId]
+    );
+    
+    return serverTransactions.length > 0 ? serverTransactions[0] : null;
+}
+
+/**
+ * Add missing transaction conflict to response
+ */
+function addMissingTransactionConflict(response, localTransaction) {
+    response.conflicts.push({
+        type: 'transaction',
+        conflictType: 'missing_on_server',
+        id: localTransaction.server_id,
+        localId: localTransaction.id,
+        message: 'Transaction was deleted on server but updated locally',
+        resolution: 'manual_review',
+        localData: localTransaction,
+        timestamp: new Date().toISOString()
+    });
+}
+
+/**
+ * Handle transaction data mismatch conflicts
+ */
+async function handleTransactionDataMismatch(localTransaction, serverTransaction, response) {
+    const conflicts = analyzeTransactionFieldConflicts(serverTransaction, localTransaction);
+    
+    if (conflicts.length > 0) {
+        const serverUpdatedAt = new Date(serverTransaction.updated_at);
+        const localUpdatedAt = new Date(localTransaction.updated_at);
+        
+        response.conflicts.push({
+            type: 'transaction',
+            conflictType: 'data_mismatch',
+            id: localTransaction.server_id,
+            localId: localTransaction.id,
+            message: `Transaction data conflicts detected in ${conflicts.length} field(s)`,
+            conflicts: conflicts,
+            resolution: 'manual_review', // Transactions should be manually reviewed
+            serverUpdatedAt: serverUpdatedAt.toISOString(),
+            localUpdatedAt: localUpdatedAt.toISOString(),
+            serverData: serverTransaction,
+            localData: localTransaction,
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+/**
+ * Analyze conflicts between server and local transaction fields
+ */
+function analyzeTransactionFieldConflicts(serverTransaction, localTransaction) {
+    const conflicts = [];
+    
+    if (Math.abs(serverTransaction.total_belanja - localTransaction.total_belanja) > 0.01) {
+        conflicts.push({
+            field: 'total_belanja',
+            serverValue: serverTransaction.total_belanja,
+            localValue: localTransaction.total_belanja
+        });
+    }
+    
+    if (serverTransaction.status_pembayaran !== localTransaction.status_pembayaran) {
+        conflicts.push({
+            field: 'status_pembayaran',
+            serverValue: serverTransaction.status_pembayaran,
+            localValue: localTransaction.status_pembayaran
+        });
+    }
+    
+    return conflicts;
 }
 
 /**
@@ -1209,23 +1433,8 @@ async function resolveProductConflict(connection, userId, productId, resolution,
     if (resolution === 'use_server') {
         // Keep server version, no action needed
         return;
-    } else if (resolution === 'use_local') {
-        // Update server with local data
-        await connection.query(
-            'UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, updated_at = ? WHERE id = ? AND user_id = ?',
-            [
-                resolvedData.nama_produk,
-                resolvedData.kode_produk,
-                resolvedData.jumlah_produk,
-                resolvedData.harga_modal,
-                resolvedData.harga_jual,
-                new Date(),
-                productId,
-                userId
-            ]
-        );
-    } else if (resolution === 'merge') {
-        // Use the merged data provided
+    } else if (resolution === 'use_local' || resolution === 'merge') {
+        // Update server with local or merged data
         await connection.query(
             'UPDATE products SET nama_produk = ?, kode_produk = ?, jumlah_produk = ?, harga_modal = ?, harga_jual = ?, updated_at = ? WHERE id = ? AND user_id = ?',
             [

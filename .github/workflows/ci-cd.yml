@@ -34,14 +34,14 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}        # Setup test database schema with test data
       - name: Setup Test Database
         run: |
-          mysql -h127.0.0.1 -uroot -ptestpassword < database/test_schema.sql
+          mysql -h127.0.0.1 -uroot -p$MYSQL_PWD < database/test_schema.sql
         env:
           MYSQL_PWD: testpassword
         # Verify database setup
       - name: Verify Database Setup
         run: |
           echo "Verifying database setup..."
-          mysql -h127.0.0.1 -uroot -ptestpassword -e "USE aplikasir_test_db; SELECT COUNT(*) as user_count FROM users; SELECT COUNT(*) as product_count FROM products; SELECT COUNT(*) as customer_count FROM customers;"
+          mysql -h127.0.0.1 -uroot -p$MYSQL_PWD -e "USE aplikasir_test_db; SELECT COUNT(*) as user_count FROM users; SELECT COUNT(*) as product_count FROM products; SELECT COUNT(*) as customer_count FROM customers;"
         env:
           MYSQL_PWD: testpassword
       
@@ -242,7 +242,7 @@ jobs:
             fi
             
             # Check MySQL status
-            if docker-compose exec -T mysql mysqladmin ping -h localhost -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} &> /dev/null; then
+            if docker-compose exec -T mysql mysqladmin ping -h localhost -u root -p${{ secrets.DB_PASSWORD }} &> /dev/null; then
                 echo "✅ MySQL is running successfully"
             else
                 echo "❌ MySQL is not responding, checking logs..."

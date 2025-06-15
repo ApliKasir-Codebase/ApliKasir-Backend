@@ -7,9 +7,8 @@ dotenv.config();
 
 const app = express();
 
-var corsOptions = {
+const corsOptions = {
     origin: "*" // Izinkan semua origin (untuk development)
-    // origin: "http://localhost:8081" // Contoh spesifik origin
 };
 app.use(cors(corsOptions));
 

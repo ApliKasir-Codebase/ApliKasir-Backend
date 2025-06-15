@@ -190,22 +190,22 @@ CREATE INDEX idx_sync_logs_user_status ON sync_logs(user_id, status);
 
 -- Active products view (not deleted)
 CREATE VIEW active_products AS
-SELECT * FROM products 
+SELECT id, user_id, kode_produk, nama_produk, kategori, merek, deskripsi, jumlah_produk, harga_modal, harga_jual, gambar_produk, is_active, created_at, updated_at, deleted_at FROM products 
 WHERE deleted_at IS NULL;
 
 -- Active customers view (not deleted)
 CREATE VIEW active_customers AS
-SELECT * FROM customers 
+SELECT id, user_id, nama_pelanggan, nomor_telepon, alamat, email, created_at, updated_at, deleted_at FROM customers 
 WHERE deleted_at IS NULL;
 
 -- Active transactions view (not deleted)
 CREATE VIEW active_transactions AS
-SELECT * FROM transactions 
+SELECT id, user_id, id_pelanggan, tanggal_transaksi, total_belanja, total_modal, metode_pembayaran, status_pembayaran, detail_items, jumlah_bayar, jumlah_kembali, catatan, id_transaksi_hutang, discount_amount, tax_amount, created_at, updated_at, deleted_at FROM transactions 
 WHERE deleted_at IS NULL;
 
 -- Recent sync logs view
 CREATE VIEW recent_sync_logs AS
-SELECT * FROM sync_logs 
+SELECT id, user_id, sync_start_time, sync_end_time, direction, status, items_uploaded, items_downloaded, client_last_sync_time, server_sync_time, error_message, details, ip_address, user_agent, created_at FROM sync_logs 
 WHERE sync_start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 ORDER BY sync_start_time DESC;
 
