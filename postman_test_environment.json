@@ -1,0 +1,91 @@
+{
+  "id": "ci-cd-test-environment",
+  "name": "ApliKasir CI/CD Test Environment",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_email",
+      "value": "test@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "password123",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_name",
+      "value": "Test User 1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_phone",
+      "value": "081234567890",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_store_name",
+      "value": "Test Store 1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_store_address",
+      "value": "Test Address 1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "new_user_email",
+      "value": "newuser@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "new_user_phone",
+      "value": "081234567899",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "product_id",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "customer_id",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "transaction_id",
+      "value": "1",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

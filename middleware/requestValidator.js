@@ -3,13 +3,12 @@ const { body, param, validationResult } = require('express-validator');
 
 const validateRegister = [
     body('name').notEmpty().withMessage('Nama tidak boleh kosong').trim(),
-    body('email').isEmail().withMessage('Format email tidak valid').normalizeEmail(),
-    body('phoneNumber')
-    .notEmpty().withMessage('Nomor telepon tidak boleh kosong')
-    .trim()
-    .matches(/^\+?[0-9]{9,15}$/) // Contoh: Opsional +, diikuti 9-15 digit
-    .withMessage('Format nomor telepon tidak valid (harus 9-15 digit, bisa diawali +)')
-    .isMobilePhone('id-ID').withMessage('Format nomor telepon tidak valid'), // Validasi setelah normalisasi
+    body('email').isEmail().withMessage('Format email tidak valid').normalizeEmail(),    body('phoneNumber')
+        .notEmpty().withMessage('Nomor telepon tidak boleh kosong')
+        .trim()
+        .matches(/^\+?\d{9,15}$/) // Contoh: Opsional +, diikuti 9-15 digit
+        .withMessage('Format nomor telepon tidak valid (harus 9-15 digit, bisa diawali +)')
+        .isMobilePhone('id-ID').withMessage('Format nomor telepon tidak valid'), // Validasi setelah normalisasi
     body('storeName').notEmpty().withMessage('Nama toko tidak boleh kosong').trim(),
     body('storeAddress').notEmpty().withMessage('Alamat toko tidak boleh kosong').trim(),
     body('password').isLength({ min: 6 }).withMessage('Password minimal 6 karakter'),
@@ -29,17 +28,15 @@ const validateRegister = [
 ];
 
 const validateLogin = [
-    body('identifier').notEmpty().withMessage('Email atau nomor telepon tidak boleh kosong'),
-    body('password').notEmpty().withMessage('Password tidak boleh kosong'),
+    body('identifier').notEmpty().withMessage('Email atau nomor telepon tidak boleh kosong'),    body('password').notEmpty().withMessage('Password tidak boleh kosong'),
     (req, res, next) => {
         const errors = validationResult(req);
-         if (!errors.isEmpty()) {
+        if (!errors.isEmpty()) {
             const firstError = errors.array({ onlyFirstError: true })[0].msg;
             return res.status(400).json({ message: firstError });
         }
-        next();
-    }
-]
+        next();    }
+];
 
 // Tambahkan fungsi validasi untuk endpoint lain (Product, Customer, Transaction)
 // Contoh validateProduct:

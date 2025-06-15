@@ -1,5 +1,6 @@
 -- ============================================
--- ApliKasir Database Schema
+-- ApliKasir Database Schema - Development
+-- Updated to match production structure
 -- ============================================
 
 -- Create database
@@ -13,18 +14,22 @@ CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phoneNumber VARCHAR(20) UNIQUE,
-    storeName VARCHAR(255),
-    storeAddress TEXT,
+    phoneNumber VARCHAR(20) UNIQUE NOT NULL,
+    storeName VARCHAR(255) NOT NULL,
+    storeAddress TEXT NOT NULL,
     passwordHash VARCHAR(255) NOT NULL,
     profileImagePath VARCHAR(500),
+    kodeQR VARCHAR(191) DEFAULT NULL COMMENT 'QRIS code for mobile payment',
     last_sync_time DATETIME,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    email_verified_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     INDEX idx_email (email),
     INDEX idx_phone (phoneNumber),
-    INDEX idx_last_sync (last_sync_time)
+    INDEX idx_last_sync (last_sync_time),
+    INDEX idx_active (is_active)
 );
 
 -- ============================================
@@ -33,12 +38,16 @@ CREATE TABLE users (
 CREATE TABLE products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    nama_produk VARCHAR(255) NOT NULL,
     kode_produk VARCHAR(100),
+    nama_produk VARCHAR(255) NOT NULL,
+    kategori VARCHAR(255) DEFAULT NULL,
+    merek VARCHAR(255) DEFAULT NULL,
+    deskripsi TEXT DEFAULT NULL,
     jumlah_produk INT DEFAULT 0,
     harga_modal DECIMAL(15,2) DEFAULT 0,
     harga_jual DECIMAL(15,2) DEFAULT 0,
     gambar_produk VARCHAR(500),
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
@@ -46,8 +55,10 @@ CREATE TABLE products (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_products (user_id),
     INDEX idx_product_code (kode_produk),
+    INDEX idx_product_active (is_active),
     INDEX idx_updated_at (updated_at),
-    INDEX idx_deleted_at (deleted_at)
+    INDEX idx_deleted_at (deleted_at),
+    INDEX idx_user_updated (user_id, updated_at)
 );
 
 -- ============================================
@@ -58,6 +69,8 @@ CREATE TABLE customers (
     user_id INT NOT NULL,
     nama_pelanggan VARCHAR(255) NOT NULL,
     nomor_telepon VARCHAR(20),
+    alamat TEXT DEFAULT NULL,
+    email VARCHAR(191) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
@@ -65,8 +78,10 @@ CREATE TABLE customers (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_customers (user_id),
     INDEX idx_customer_phone (nomor_telepon),
+    INDEX idx_customer_email (email),
     INDEX idx_updated_at (updated_at),
-    INDEX idx_deleted_at (deleted_at)
+    INDEX idx_deleted_at (deleted_at),
+    INDEX idx_user_updated (user_id, updated_at)
 );
 
 -- ============================================
@@ -75,16 +90,19 @@ CREATE TABLE customers (
 CREATE TABLE transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    id_pelanggan INT DEFAULT NULL,
     tanggal_transaksi DATETIME NOT NULL,
     total_belanja DECIMAL(15,2) NOT NULL,
     total_modal DECIMAL(15,2) DEFAULT 0,
-    metode_pembayaran ENUM('cash', 'debit', 'credit', 'qris') DEFAULT 'cash',
-    status_pembayaran ENUM('pending', 'paid', 'cancelled') DEFAULT 'pending',
-    id_pelanggan INT,
+    metode_pembayaran ENUM('cash', 'debit', 'credit', 'qris', 'transfer') DEFAULT 'cash',
+    status_pembayaran ENUM('pending', 'paid', 'cancelled', 'refunded') DEFAULT 'pending',
     detail_items JSON,
     jumlah_bayar DECIMAL(15,2) DEFAULT 0,
     jumlah_kembali DECIMAL(15,2) DEFAULT 0,
+    catatan TEXT DEFAULT NULL,
     id_transaksi_hutang INT,
+    discount_amount DECIMAL(15,2) DEFAULT 0.00,
+    tax_amount DECIMAL(15,2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
@@ -92,10 +110,14 @@ CREATE TABLE transactions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (id_pelanggan) REFERENCES customers(id) ON DELETE SET NULL,
     INDEX idx_user_transactions (user_id),
+    INDEX idx_customer_id (id_pelanggan),
     INDEX idx_transaction_date (tanggal_transaksi),
+    INDEX idx_payment_method (metode_pembayaran),
     INDEX idx_payment_status (status_pembayaran),
     INDEX idx_updated_at (updated_at),
-    INDEX idx_deleted_at (deleted_at)
+    INDEX idx_deleted_at (deleted_at),
+    INDEX idx_user_date (user_id, tanggal_transaksi),
+    INDEX idx_user_updated (user_id, updated_at)
 );
 
 -- ============================================
@@ -106,7 +128,7 @@ CREATE TABLE sync_logs (
     user_id INT NOT NULL,
     sync_start_time DATETIME NOT NULL,
     sync_end_time DATETIME,
-    direction ENUM('Upload Only', 'Download Only', 'Bidirectional') NOT NULL,
+    direction ENUM('Upload Only', 'Download Only', 'Bidirectional') NOT NULL DEFAULT 'Bidirectional',
     status ENUM('In Progress', 'Success', 'Partial Success', 'Failed') NOT NULL,
     items_uploaded INT DEFAULT 0,
     items_downloaded INT DEFAULT 0,
@@ -114,13 +136,16 @@ CREATE TABLE sync_logs (
     server_sync_time DATETIME,
     error_message TEXT,
     details JSON,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent VARCHAR(500) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_sync_logs (user_id),
     INDEX idx_sync_status (status),
     INDEX idx_sync_direction (direction),
-    INDEX idx_sync_start_time (sync_start_time)
+    INDEX idx_sync_start_time (sync_start_time),
+    INDEX idx_user_status (user_id, status)
 );
 
 -- ============================================

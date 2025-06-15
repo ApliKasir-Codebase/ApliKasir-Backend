@@ -21,70 +21,97 @@ exports.getUserProfile = async (req, res) => {
     }
 };
 
+// Helper function to build update fields and values
+const buildUpdateFields = async (req) => {
+    const { name, email, phoneNumber, storeName, storeAddress, profileImagePath, newPassword } = req.body;
+    let updateFields = [];
+    let updateValues = [];
+
+    const fieldMappings = [
+        { field: name, column: "name" },
+        { field: email, column: "email" },
+        { field: phoneNumber, column: "phoneNumber" },
+        { field: storeName, column: "storeName" },
+        { field: storeAddress, column: "storeAddress" },
+        { field: profileImagePath, column: "profileImagePath" }
+    ];
+
+    fieldMappings.forEach(({ field, column }) => {
+        if (field !== undefined) {
+            updateFields.push(`${column} = ?`);
+            updateValues.push(field);
+        }
+    });
+
+    if (newPassword) {
+        const passwordHash = await passwordUtils.hashPassword(newPassword);
+        updateFields.push("passwordHash = ?");
+        updateValues.push(passwordHash);
+    }
+
+    return { updateFields, updateValues };
+};
+
+// Helper function to handle successful update
+const handleSuccessfulUpdate = async (userId) => {
+    const selectSql = 'SELECT id, name, email, phoneNumber, storeName, storeAddress, profileImagePath, created_at, updated_at, last_sync_time FROM users WHERE id = ?';
+    const [updatedUserRows] = await db.query(selectSql, [userId]);
+    
+    if (updatedUserRows.length > 0) {
+        return { message: "Profile updated successfully.", user: updatedUserRows[0] };
+    }
+    return { message: "Profile updated successfully, but failed to fetch updated details." };
+};
+
+// Helper function to handle no rows affected
+const handleNoRowsAffected = async (userId) => {
+    const [userExists] = await db.query('SELECT id FROM users WHERE id = ?', [userId]);
+    if (userExists.length === 0) {
+        return { status: 404, message: "User not found." };
+    }
+    return { status: 200, message: "No changes detected or user not found." };
+};
+
+// Helper function to handle database errors
+const handleDatabaseError = (error) => {
+    if (error.code === 'ER_DUP_ENTRY') {
+        if (error.sqlMessage?.includes('email')) {
+            return { status: 409, message: "Update failed! Email is already in use by another account." };
+        } else if (error.sqlMessage?.includes('phoneNumber') || error.sqlMessage?.includes('phonenumber')) {
+            return { status: 409, message: "Update failed! Phone number is already in use by another account." };
+        }
+        return { status: 409, message: "Update failed! Duplicate entry detected." };
+    }
+    return { status: 500, message: error.message || "Error updating user profile." };
+};
+
 // Update User Profile
 exports.updateUserProfile = async (req, res) => {
     const userId = req.userId;
-    const { name, email, phoneNumber, storeName, storeAddress, profileImagePath, newPassword } = req.body;
 
     try {
-        let updateFields = [];
-        let updateValues = [];
-
-        // Bangun query dinamis berdasarkan field yang ada di request body
-        if (name !== undefined) { updateFields.push("name = ?"); updateValues.push(name); }
-        if (email !== undefined) { updateFields.push("email = ?"); updateValues.push(email); }
-        if (phoneNumber !== undefined) { updateFields.push("phoneNumber = ?"); updateValues.push(phoneNumber); }
-        if (storeName !== undefined) { updateFields.push("storeName = ?"); updateValues.push(storeName); }
-        if (storeAddress !== undefined) { updateFields.push("storeAddress = ?"); updateValues.push(storeAddress); }
-        if (profileImagePath !== undefined) { updateFields.push("profileImagePath = ?"); updateValues.push(profileImagePath); }
-
-        // Handle password change
-        if (newPassword) {
-            const passwordHash = await passwordUtils.hashPassword(newPassword);
-            updateFields.push("passwordHash = ?");
-            updateValues.push(passwordHash);
-        }
+        const { updateFields, updateValues } = await buildUpdateFields(req);
 
         if (updateFields.length === 0) {
             return res.status(400).send({ message: "No fields provided for update." });
         }
 
-        // Tambahkan updated_at dan ID user untuk WHERE clause
         updateFields.push("updated_at = NOW()");
         updateValues.push(userId);
 
         const sql = `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`;
-
         const [result] = await db.query(sql, updateValues);
 
         if (result.affectedRows > 0) {
-            // Ambil data terbaru setelah update untuk dikirim balik
-            const [updatedUserRows] = await db.query('SELECT id, name, email, phoneNumber, storeName, storeAddress, profileImagePath, created_at, updated_at, last_sync_time FROM users WHERE id = ?', [userId]);
-            if (updatedUserRows.length > 0) {
-                 res.status(200).send({ message: "Profile updated successfully.", user: updatedUserRows[0] });
-            } else {
-                 res.status(200).send({ message: "Profile updated successfully, but failed to fetch updated details." });
-            }
-
+            const response = await handleSuccessfulUpdate(userId);
+            res.status(200).send(response);
         } else {
-            // Cek apakah user memang ada
-             const [userExists] = await db.query('SELECT id FROM users WHERE id = ?', [userId]);
-             if (userExists.length === 0) {
-                 return res.status(404).send({ message: "User not found." });
-             }
-             // Jika user ada tapi affectedRows = 0, mungkin data sama
-            res.status(200).send({ message: "No changes detected or user not found." });
-        }    } catch (error) {
-        console.error("Update User Profile Error:", error);
-        if (error.code === 'ER_DUP_ENTRY') {
-             if (error.sqlMessage && error.sqlMessage.includes('email')) {
-                return res.status(409).send({ message: "Update failed! Email is already in use by another account." });
-            } else if (error.sqlMessage && (error.sqlMessage.includes('phoneNumber') || error.sqlMessage.includes('phonenumber'))) {
-                return res.status(409).send({ message: "Update failed! Phone number is already in use by another account." });
-            } else {
-                return res.status(409).send({ message: "Update failed! Duplicate entry detected." });
-            }
+            const { status, message } = await handleNoRowsAffected(userId);
+            res.status(status).send({ message });
         }
-        res.status(500).send({ message: error.message || "Error updating user profile." });
+    } catch (error) {
+        console.error("Update User Profile Error:", error);
+        const { status, message } = handleDatabaseError(error);
+        res.status(status).send({ message });
     }
 };

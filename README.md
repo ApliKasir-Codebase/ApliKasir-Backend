@@ -11,6 +11,8 @@ Backend API untuk aplikasi kasir (Point of Sale) yang mendukung sinkronisasi dat
 - [Menjalankan Server](#-menjalankan-server)
 - [API Endpoints](#-api-endpoints)
 - [Testing dengan Postman](#-testing-dengan-postman)
+- [Testing Database](#-testing-database)
+- [CI/CD Testing](#-cicd-testing)
 - [Struktur Proyek](#-struktur-proyek)
 - [Struktur Database](#️-struktur-database)
 - [Dokumentasi API](#-dokumentasi-api)
@@ -136,6 +138,47 @@ Jika menggunakan Google Cloud Storage, letakkan file `serviceAccountKey.json` di
 
 > 📖 **Note**: File ini sudah ada dalam `.gitignore` untuk keamanan
 
+### 🛡️ Environment Validation
+
+Sebelum deployment, gunakan script validator untuk memastikan semua environment variables sudah diset dengan benar:
+
+```bash
+# Make validator executable
+chmod +x validate-env.sh
+
+# Run validation
+./validate-env.sh
+```
+
+Script akan memeriksa:
+- ✅ **Required variables** sudah diset
+- ✅ **Password length** minimum 8 karakter  
+- ✅ **JWT secret length** minimum 32 karakter
+- ✅ **File dependencies** tersedia
+- ✅ **Configuration format** yang benar
+
+### 🔑 Secure Value Examples
+
+**JWT_SECRET** (gunakan generator yang aman):
+```bash
+# Generate secure JWT secret (32+ characters)
+openssl rand -base64 32
+# Result: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh123456==
+```
+
+**Database Passwords** (gunakan karakter kombinasi):
+```bash
+# Example secure passwords
+DB_PASSWORD=MySecure_DB_Pass2024!
+MYSQL_ROOT_PASSWORD=Root_Pass_V3ry_S3cur3#2024
+```
+
+**Firebase Configuration**:
+```bash
+FIREBASE_PROJECT_ID=aplikasir-database-prod
+FIREBASE_BUCKET_NAME=aplikasir-storage-bucket.appspot.com
+```
+
 ## 🚀 Menjalankan Server
 
 ### Development Mode (dengan auto-reload)
@@ -216,44 +259,131 @@ npm run postman-test
 ✅ Sync endpoints mengembalikan data yang benar
 ✅ Error handling berfungsi dengan baik (status 400, 401, 409, 500)
 
-## � Struktur Proyek
+## 🧪 Testing Database
 
-```
-aplikasir-backend/
-├── 📁 config/              # Konfigurasi database dan auth
-│   ├── auth.config.js
-│   └── db.config.js
-├── 📁 controllers/         # Logic bisnis aplikasi
-│   ├── auth.controller.js
-│   ├── sync.controller.js
-│   └── user.controller.js
-├── 📁 database/           # Database schema dan migrations
-│   └── schema.sql
-├── 📁 middleware/         # Middleware untuk validation dan auth
-│   ├── authJwt.js
-│   └── requestValidator.js
-├── 📁 routes/            # Definisi routing API
-│   ├── auth.routes.js
-│   ├── sync.routes.js
-│   └── user.routes.js
-├── 📁 utils/             # Utility functions
-│   ├── firebaseStorage.helper.js
-│   └── passwordUtils.js
-├── 📄 server.js          # Entry point aplikasi
-├── 📄 package.json       # Dependencies dan scripts
-├── 📄 .env.example       # Template environment variables
-├── 📄 .gitignore         # File yang diabaikan git
-├── 📄 README.md          # Dokumentasi utama
-├── 📄 QUICKSTART.md      # Panduan setup cepat
-├── 📄 API_DOCUMENTATION.md # Dokumentasi API detail
-├── 📄 CHANGELOG.md       # Riwayat perubahan
-└── 📄 ApliKasir_API_Collection.json  # Postman collection
+### Setup Test Database
+
+Project ini menyediakan database testing khusus untuk CI/CD dan development testing:
+
+```bash
+# Setup test database (Linux/Mac)
+chmod +x setup-test-db.sh
+./setup-test-db.sh
+
+# Setup test database (Windows PowerShell)
+.\setup-test-db.ps1
 ```
 
-> 📖 **Dokumentasi Lengkap**: 
-> - [API Documentation](./API_DOCUMENTATION.md) - Detail semua endpoint
-> - [Quick Start Guide](./QUICKSTART.md) - Setup dalam 5 menit
-> - [Changelog](./CHANGELOG.md) - Riwayat update
+### Test Database Schema
+
+File: `database/test_schema.sql`
+- **Database**: `aplikasir_test_db`
+- **Test Users**: 3 users dengan credentials yang sudah diketahui
+- **Test Data**: Products, customers, dan transactions untuk testing
+- **Optimized**: Dirancang khusus untuk CI/CD pipeline
+
+### Test Credentials
+
+```
+Test User 1:
+- Email: test@example.com
+- Password: password123
+- Phone: 081234567890
+
+Test User 2:
+- Email: test2@example.com  
+- Password: password123
+- Phone: 081234567891
+
+John Doe User:
+- Email: john.doe@example.com
+- Password: password123
+- Phone: 081234567892
+```
+
+### Verification Commands
+
+```bash
+# Verify database setup
+mysql -u root -p aplikasir_test_db -e "
+  SELECT COUNT(*) as users FROM users;
+  SELECT COUNT(*) as products FROM products;
+  SELECT COUNT(*) as customers FROM customers;
+"
+
+# Check test data
+mysql -u root -p aplikasir_test_db -e "
+  SELECT id, name, email, storeName FROM users LIMIT 5;
+"
+```
+
+## 🧪 CI/CD Testing
+
+### GitHub Actions Pipeline
+
+Project menggunakan automated testing dalam GitHub Actions:
+
+**Files:**
+- `.github/workflows/ci-cd.yml` - Main CI/CD pipeline
+- `postman_test_environment.json` - Environment khusus untuk testing
+- `database/test_schema.sql` - Schema database untuk testing
+
+**Testing Flow:**
+1. **Database Setup** - Deploy test schema dengan test data
+2. **Server Start** - Start Node.js server dengan test environment
+3. **API Testing** - Run Newman/Postman collection tests
+4. **Results** - Generate detailed test reports
+
+### Local CI/CD Testing
+
+```bash
+# Test database setup dan verification
+./setup-test-db.sh
+
+# Start server dengan test environment
+NODE_ENV=test DB_NAME=aplikasir_test_db npm start
+
+# Run Newman tests
+newman run ApliKasir_API_Collection.json \
+  --environment postman_test_environment.json \
+  --reporters cli,json \
+  --reporter-json-export test-results.json
+```
+
+### Expected Test Results
+
+GitHub Actions akan menjalankan tests dan hasilnya bisa:
+- ✅ **200 OK** - Endpoint berfungsi normal
+- ✅ **401 Unauthorized** - Authentication working properly  
+- ✅ **404 Not Found** - Resource tidak ditemukan (normal behavior)
+- ❌ **500 Internal Server Error** - Ada bug yang perlu diperbaiki
+
+### Debugging Failed Tests
+
+```bash
+# Check test database
+./setup-test-db.sh --verify-only
+
+# Check server logs
+npm start 2>&1 | tee server.log
+
+# Run specific test with verbose output
+newman run ApliKasir_API_Collection.json \
+  --environment postman_test_environment.json \
+  --verbose
+```
+
+### Test Environment Variables
+
+CI/CD menggunakan environment variables berikut:
+```bash
+NODE_ENV=test
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=testpassword
+DB_NAME=aplikasir_test_db
+JWT_SECRET=test-jwt-secret-key-for-ci-cd
+```
 
 ## 🗄️ Struktur Database
 
@@ -587,7 +717,11 @@ Project ini menggunakan GitHub Actions untuk automated testing, building, dan de
 Untuk menjalankan CI/CD pipeline, Anda perlu mengatur secrets berikut di GitHub repository settings:
 
 #### **Database & Server Secrets:**
-- Tidak ada - menggunakan MySQL service container untuk testing
+```
+DB_PASSWORD                    # Password MySQL untuk user aplikasi (aplikasir_user)
+MYSQL_ROOT_PASSWORD           # Root password MySQL untuk admin access
+JWT_SECRET                    # Secret key untuk JWT authentication
+```
 
 #### **Firebase Secrets:**
 ```
@@ -614,90 +748,74 @@ VPS_SSH_PRIVATE_KEY           # Private key untuk SSH access
 SONAR_TOKEN                    # Token untuk SonarCloud analysis
 ```
 
-### 🚀 CI/CD Pipeline Flow
+### 📋 Complete GitHub Secrets List
 
-1. **Build & Test** - Install dependencies, setup MySQL, run server, execute Newman tests
-2. **Code Quality** - SonarQube analysis untuk code quality check
-3. **Docker Build** - Build dan push Docker image ke Docker Hub
-4. **Deploy** - Deploy ke VPS menggunakan Docker Compose
+Berikut adalah daftar lengkap semua GitHub secrets yang diperlukan untuk CI/CD:
 
-### 📝 Setup Firebase Secrets
+#### **🔐 Authentication & Security:**
+```
+JWT_SECRET                    # Secret key untuk JWT tokens (minimal 32 karakter)
+```
 
-1. Buka file `serviceAccountKey.json` Anda
-2. Copy seluruh content JSON
-3. Paste ke GitHub Secret `FIREBASE_SERVICE_ACCOUNT_KEY`
-4. Set `FIREBASE_PROJECT_ID` dengan project ID Firebase
-5. Set `FIREBASE_BUCKET_NAME` dengan nama bucket Storage
+#### **🗄️ Database Configuration:**
+```
+DB_PASSWORD                   # Password untuk MySQL user 'aplikasir_user'
+MYSQL_ROOT_PASSWORD          # Root password untuk MySQL server
+```
 
-### 🔐 Security Notes
+#### **🔥 Firebase Configuration:**
+```
+FIREBASE_SERVICE_ACCOUNT_KEY  # Full JSON content dari serviceAccountKey.json
+FIREBASE_PROJECT_ID          # Firebase Project ID (contoh: aplikasir-database)
+FIREBASE_BUCKET_NAME         # Firebase Storage bucket name
+```
 
-- File `serviceAccountKey.json` akan dibuat secara otomatis dari secrets
-- File ini akan dihapus setelah CI/CD selesai untuk keamanan
-- Pastikan tidak commit file credentials ke repository
+#### **🐳 Docker Hub:**
+```
+DOCKER_USERNAME              # Docker Hub username
+DOCKER_PASSWORD              # Docker Hub password atau access token
+```
 
-## 📦 Docker Deployment
+#### **🌐 VPS Deployment:**
+```
+VPS_HOST                     # IP address atau hostname VPS
+VPS_USER                     # Username untuk SSH access ke VPS
+VPS_SSH_PRIVATE_KEY          # SSH private key untuk authentication
+```
 
-Project ini telah dikonfigurasi untuk deployment menggunakan Docker dan Docker Compose.
+#### **📊 Code Quality:**
+```
+SONAR_TOKEN                  # SonarCloud token untuk code analysis
+```
 
-#### **Build Docker Image Locally:**
+### 🔧 Environment Variables Structure
+
+File `.env` yang akan dibuat di VPS akan memiliki struktur yang sama dengan `.env.example` lokal:
+
 ```bash
-# Build image
-docker build -t aplikasir-backend .
+# Database Configuration
+DB_HOST=mysql                 # Hostname database (mysql container)
+DB_USER=aplikasir_user       # Database username
+DB_PASSWORD=***              # Dari secrets.DB_PASSWORD
+DB_NAME=aplika19_db_aplikasir # Database name
+DB_PORT=3306                 # Database port
 
-# Run container
-docker run -p 3000:3000 \
-  -e DB_HOST=your_db_host \
-  -e DB_USER=your_db_user \
-  -e DB_PASSWORD=your_db_password \
-  -e DB_NAME=aplikasir_db \
-  -e FIREBASE_PROJECT_ID=your_project_id \
-  -e FIREBASE_BUCKET_NAME=your_bucket_name \
-  aplikasir-backend
-```
+# MySQL Root Configuration  
+MYSQL_ROOT_PASSWORD=***      # Dari secrets.MYSQL_ROOT_PASSWORD
 
-#### **Deploy dengan Docker Compose:**
-```bash
-# Copy environment template
-cp .env.production .env
+# JWT Configuration
+JWT_SECRET=***               # Dari secrets.JWT_SECRET
+JWT_EXPIRES_IN=24h          # Token expiration time
 
-# Edit environment variables
-nano .env
+# Server Configuration
+PORT=3000                    # Application port
+NODE_ENV=production         # Environment mode
 
-# Start all services
-docker-compose up -d
+# Firebase Configuration
+FIREBASE_PROJECT_ID=***      # Dari secrets.FIREBASE_PROJECT_ID
+FIREBASE_BUCKET_NAME=***     # Dari secrets.FIREBASE_BUCKET_NAME
+GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
 
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f aplikasir-backend
-```
-
-#### **Quick Deployment Scripts:**
-
-For easier deployment, use the provided scripts:
-
-**Linux/Mac:**
-```bash
-chmod +x deploy-local.sh
-./deploy-local.sh
-```
-
-**Windows PowerShell:**
-```powershell
-.\deploy-local.ps1
-```
-
-Scripts akan otomatis:
-- ✅ Check Docker installation
-- ✅ Create .env file dari template
-- ✅ Build dan start semua services
-- ✅ Perform health checks
-- ✅ Show service status dan logs
-
-#### **Additional GitHub Secrets untuk Docker:**
-```
-DB_PASSWORD                    # Password MySQL untuk aplikasi
-MYSQL_ROOT_PASSWORD           # Root password MySQL
-JWT_SECRET                    # Secret key untuk JWT tokens
+# CORS Configuration
+CORS_ORIGIN=*               # CORS allowed origins
 ```

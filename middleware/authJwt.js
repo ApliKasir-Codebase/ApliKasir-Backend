@@ -13,11 +13,9 @@ const verifyToken = (req, res, next) => {
 
     if (!token) {
         return res.status(403).send({ message: "No token provided!" });
-    }
-
-    // Jika formatnya "Bearer <token>", ekstrak tokennya
+    }    // Jika formatnya "Bearer <token>", ekstrak tokennya
     if (token.startsWith('Bearer ')) {
-         token = token.slice(7, token.length);
+        token = token.slice(7, token.length);
     }
 
 

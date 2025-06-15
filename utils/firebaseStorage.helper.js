@@ -2,11 +2,15 @@
 const { Storage } = require('@google-cloud/storage');
 const path = require('path');
 const dotenv = require('dotenv');
+
 dotenv.config(); // Pastikan .env dimuat
 
 // Cek variabel environment
-if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_BUCKET_NAME || !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.error("FATAL ERROR: Firebase environment variables (FIREBASE_PROJECT_ID, FIREBASE_BUCKET_NAME, GOOGLE_APPLICATION_CREDENTIALS) are not set.");
+const requiredEnvVars = ['FIREBASE_PROJECT_ID', 'FIREBASE_BUCKET_NAME', 'GOOGLE_APPLICATION_CREDENTIALS'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+    console.error(`FATAL ERROR: Missing Firebase environment variables: ${missingVars.join(', ')}`);
     // process.exit(1); // Mungkin keluar jika kritis
 }
 
@@ -29,15 +33,13 @@ console.log(`Firebase Storage initialized for bucket: ${bucketName}`);
  * @returns {Promise<string|null>} The public URL of the uploaded file, or null on error.
  */
 const uploadImageToFirebase = (buffer, originalname, destinationPath = 'profile_images/') => {
-    return new Promise((resolve, reject) => {
-        if (!buffer || !originalname) {
-            return reject('Invalid file buffer or originalname provided.');
+    return new Promise((resolve, reject) => {        if (!buffer || !originalname) {
+            return reject(new Error('Invalid file buffer or originalname provided.'));
         }
 
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const fileExtension = path.extname(originalname);
-        // Pastikan destinationPath diakhiri slash jika ada isinya
-        if(destinationPath && !destinationPath.endsWith('/')) {
+        const fileExtension = path.extname(originalname);        // Pastikan destinationPath diakhiri slash jika ada isinya
+        if (destinationPath && !destinationPath.endsWith('/')) {
             destinationPath += '/';
         }
         const blobName = `${destinationPath}profile_${uniqueSuffix}${fileExtension}`;
@@ -49,11 +51,9 @@ const uploadImageToFirebase = (buffer, originalname, destinationPath = 'profile_
                 // Coba deteksi tipe konten dasar
                 contentType: `image/${fileExtension.substring(1).toLowerCase()}`
             }
-        });
-
-        blobStream.on('error', (err) => {
+        });        blobStream.on('error', (err) => {
             console.error("Firebase Storage Upload Error:", err);
-            reject(`Error uploading image: ${err.message}`);
+            reject(new Error(`Error uploading image: ${err.message}`));
         });
 
         blobStream.on('finish', async () => {
@@ -65,12 +65,12 @@ const uploadImageToFirebase = (buffer, originalname, destinationPath = 'profile_
                 console.log(`File made public: ${publicUrl}`);
                 resolve(publicUrl); // Kembalikan URL publik
             } catch (publicError) {
-                console.error("Error making file public (returning gs:// path as fallback):", publicError);
-                 // Kembalikan gs:// path sebagai fallback jika gagal makePublic
-                 // Aplikasi mungkin masih bisa akses jika permission diatur beda
+                console.error("Error making file public:", publicError);
+                // Kembalikan gs:// path sebagai fallback jika gagal makePublic
+                // Aplikasi mungkin masih bisa akses jika permission diatur beda
                 resolve(`gs://${bucketName}/${blobName}`);
                 // Atau reject jika URL publik absolut diperlukan
-                // reject(`Error making file public: ${publicError.message}`);
+                // reject(new Error(`Error making file public: ${publicError.message}`));
             }
         });
 

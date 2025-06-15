@@ -10,13 +10,12 @@ jobs:
   build-and-test:
     name: Continuous Integration & Testing
     runs-on: ubuntu-latest
-    
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: testpassword
-          MYSQL_DATABASE: aplikasir_db
+          MYSQL_DATABASE: aplikasir_test_db
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -32,15 +31,21 @@ jobs:
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > serviceAccountKey.json
         env:
-          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-      
-      # Setup database schema
-      - name: Setup Database
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}        # Setup test database schema with test data
+      - name: Setup Test Database
         run: |
-          mysql -h127.0.0.1 -uroot -ptestpassword < database/schema.sql
+          mysql -h127.0.0.1 -uroot -ptestpassword < database/test_schema.sql
         env:
           MYSQL_PWD: testpassword
-        # Start the server in background
+        # Verify database setup
+      - name: Verify Database Setup
+        run: |
+          echo "Verifying database setup..."
+          mysql -h127.0.0.1 -uroot -ptestpassword -e "USE aplikasir_test_db; SELECT COUNT(*) as user_count FROM users; SELECT COUNT(*) as product_count FROM products; SELECT COUNT(*) as customer_count FROM customers;"
+        env:
+          MYSQL_PWD: testpassword
+      
+      # Start the server in background
       - name: Start Server
         run: |
           npm start &
@@ -51,22 +56,49 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_USER: root
           DB_PASSWORD: testpassword
-          DB_NAME: aplikasir_db
+          DB_NAME: aplikasir_test_db
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'test-jwt-secret-key-for-ci-cd' }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_BUCKET_NAME: ${{ secrets.FIREBASE_BUCKET_NAME }}
-          GOOGLE_APPLICATION_CREDENTIALS: ./serviceAccountKey.json
-          
-      # Wait for server to be ready
-      - name: Wait for Server to Start
+          GOOGLE_APPLICATION_CREDENTIALS: ./serviceAccountKey.json      # Wait for server to be ready and test basic connectivity
+      - name: Wait for Server and Test Connectivity
         run: |
-          timeout 30 bash -c 'until curl -f http://localhost:3000/; do sleep 1; done'
-            # Install Newman and run API tests
-      - name: Run Newman Tests
+          echo "Waiting for server to start..."
+          timeout 60 bash -c 'until curl -f http://localhost:3000/; do sleep 2; done'
+          echo "Server is running, testing basic endpoints..."
+          curl -f http://localhost:3000/ || echo "Root endpoint test failed"
+          echo "Server connectivity test completed"      # Install Newman and run API tests with detailed output
+      - name: Run Newman API Tests
         run: |
           npm install -g newman
-          newman run "ApliKasir_API_Collection.json" --environment "postman_environment.json" --reporters cli,json --reporter-json-export newman-results.json
+          echo "Starting API tests with Newman..."
+          newman run "ApliKasir_API_Collection.json" \
+            --environment "postman_test_environment.json" \
+            --reporters cli,json \
+            --reporter-json-export newman-results.json \
+            --verbose \
+            --color on
         continue-on-error: true
-            # Cleanup: Stop the server
+        
+      # Show test results summary
+      - name: Show Test Results Summary
+        if: always()
+        run: |
+          if [ -f newman-results.json ]; then
+            echo "=== API Test Results Summary ==="
+            echo "Collection: $(jq -r '.collection.info.name' newman-results.json)"
+            echo "Total Requests: $(jq -r '.run.stats.requests.total' newman-results.json)"
+            echo "Failed Requests: $(jq -r '.run.stats.requests.failed' newman-results.json)"
+            echo "Total Assertions: $(jq -r '.run.stats.assertions.total' newman-results.json)"
+            echo "Failed Assertions: $(jq -r '.run.stats.assertions.failed' newman-results.json)"
+            echo ""
+            echo "=== Failed Tests Details ==="
+            jq -r '.run.failures[] | "Request: \(.source.name) | Error: \(.error.message)"' newman-results.json || echo "No detailed failure information available"
+          else
+            echo "Newman results file not found"
+          fi
+          
+      # Cleanup: Stop the server
       - name: Stop Server
         if: always()
         run: |
@@ -132,14 +164,14 @@ jobs:
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
-      # Cleanup: Remove Firebase service account key
+            # Cleanup: Remove Firebase service account key
       - name: Cleanup Firebase Key
         if: always()
         run: |
           if [ -f serviceAccountKey.json ]; then
             rm serviceAccountKey.json
           fi
+
   deploy-to-vps:
     name: Deploy ke VPS
     runs-on: ubuntu-latest
@@ -154,26 +186,71 @@ jobs:
           script: |
             cd ~/aplikasir-backend
             
-            # Create environment file
+            # Create environment file (.env) sama seperti lokal
             cat > .env << EOF
+            # Database Configuration
+            DB_HOST=mysql
+            DB_USER=aplika19_hshi
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+            DB_NAME=aplika19_db_aplikasir
+            DB_PORT=3306
+            
+            # JWT Configuration
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            
+            # Server Configuration
+            NODE_ENV=production
+            
+            # Firebase Configuration
             FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
             FIREBASE_BUCKET_NAME=${{ secrets.FIREBASE_BUCKET_NAME }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+            
+            # CORS Configuration
+            CORS_ORIGIN=*
             EOF
             
             # Create Firebase service account key
             echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > serviceAccountKey.json
             
+            # Create uploads directory if not exists
+            mkdir -p uploads
+            
             # Pull latest image and restart services
+            echo "🔄 Pulling latest Docker image..."
             docker pull hshinosa/aplikasir-backend:latest
+            
+            echo "🛑 Stopping existing services..."
             docker-compose down
+            
+            echo "🚀 Starting services with new configuration..."
             docker-compose up -d --force-recreate
             
             # Wait for services to be healthy
+            echo "⏳ Waiting for services to start..."
             sleep 30
+            
+            echo "📊 Checking service status..."
             docker-compose ps
             
+            # Check if backend is responding
+            if curl -f http://localhost:3000/ &> /dev/null; then
+                echo "✅ Backend is running successfully"
+            else
+                echo "❌ Backend is not responding, checking logs..."
+                docker-compose logs aplikasir-backend --tail=20
+            fi
+            
+            # Check MySQL status
+            if docker-compose exec -T mysql mysqladmin ping -h localhost -u root -p${{ secrets.MYSQL_ROOT_PASSWORD }} &> /dev/null; then
+                echo "✅ MySQL is running successfully"
+            else
+                echo "❌ MySQL is not responding, checking logs..."
+                docker-compose logs mysql --tail=20
+            fi
+            
             # Cleanup sensitive files
+            echo "🧹 Cleaning up sensitive files..."
             rm -f serviceAccountKey.json
+            
+            echo "🎉 Deployment completed!"

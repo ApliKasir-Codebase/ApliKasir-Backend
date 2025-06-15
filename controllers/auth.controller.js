@@ -41,13 +41,13 @@ exports.register = async (req, res) => {
             profileImageUrl // Simpan URL dari Firebase atau null
         ]);
 
-        if (result.insertId) {
-            // 4. Ambil data user yg baru dibuat (tanpa hash)
-            const [newUserRows] = await db.query('SELECT id, name, email, phoneNumber, storeName, storeAddress, profileImagePath, created_at, updated_at FROM users WHERE id = ?', [result.insertId]);
-             if (newUserRows.length > 0) {
+        if (result.insertId) {            // 4. Ambil data user yang baru dibuat (tanpa hash)
+            const selectSql = 'SELECT id, name, email, phoneNumber, storeName, storeAddress, profileImagePath, created_at, updated_at FROM users WHERE id = ?';
+            const [newUserRows] = await db.query(selectSql, [result.insertId]);
+            if (newUserRows.length > 0) {
                 res.status(201).send({ message: "User registered successfully!", user: newUserRows[0] });
             } else {
-                res.status(201).send({ message: "User registered successfully, but failed to fetch details."});
+                res.status(201).send({ message: "User registered successfully, but failed to fetch details." });
             }
         } else {
             // Jika insert gagal, coba hapus gambar yg mungkin terupload? (Kompleks)
@@ -55,9 +55,8 @@ exports.register = async (req, res) => {
         }
 
     } catch (error) {
-        console.error("Registration Error:", error);
-        // Handle duplicate entry (sama seperti sebelumnya)
-         if (error.code === 'ER_DUP_ENTRY') {
+        console.error("Registration Error:", error);        // Handle duplicate entry
+        if (error.code === 'ER_DUP_ENTRY') {
             if (error.sqlMessage.includes('email')) {
                 return res.status(409).send({ message: "Failed! Email is already in use!" });
             } else if (error.sqlMessage.includes('phoneNumber')) {
@@ -69,9 +68,8 @@ exports.register = async (req, res) => {
     }
 };
 
-// --- Fungsi Login Tetap Sama ---
+// --- Fungsi Login ---
 exports.login = async (req, res) => {
-   // ... (kode login tidak berubah) ...
     const { identifier, password } = req.body;
 
     try {
