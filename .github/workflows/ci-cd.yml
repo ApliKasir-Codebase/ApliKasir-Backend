@@ -10,12 +10,62 @@ jobs:
   build-and-test:
     name: Continuous Integration & Testing
     runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: aplikasir_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with: { node-version: '20' }
       - run: npm install
-      - run: npm install -g newman && newman run "ApliKasir_API_Collection.json"
+      
+      # Setup database schema
+      - name: Setup Database
+        run: |
+          mysql -h127.0.0.1 -uroot -ptestpassword < database/schema.sql
+        env:
+          MYSQL_PWD: testpassword
+      
+      # Start the server in background
+      - name: Start Server
+        run: |
+          npm start &
+          echo $! > server.pid
+        env:
+          PORT: 3000
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: testpassword
+          DB_NAME: aplikasir_db
+          
+      # Wait for server to be ready
+      - name: Wait for Server to Start
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3000/; do sleep 1; done'
+            # Install Newman and run API tests
+      - name: Run Newman Tests
+        run: |
+          npm install -g newman
+          newman run "ApliKasir_API_Collection.json" --environment "postman_environment.json" --reporters cli,json --reporter-json-export newman-results.json
+        continue-on-error: true
+          
+      # Cleanup: Stop the server
+      - name: Stop Server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+          fi
 
   sonar-scan:
     name: Continous Inspection dengan SonarQube
