@@ -1,0 +1,68 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Firebase credentials
+serviceAccountKey.json
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# Documentation
+README.md
+QUICKSTART.md
+API_DOCUMENTATION.md
+CHANGELOG.md
+*.md
+
+# Testing
+newman-results.json
+postman_environment.json
+ApliKasir_API_Collection.json
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# Temporary folders
+tmp
+temp
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Backup files
+backup/
+*.backup
+
+# Database dumps
+*.sql

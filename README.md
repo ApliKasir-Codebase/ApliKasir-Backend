@@ -19,6 +19,7 @@ Backend API untuk aplikasi kasir (Point of Sale) yang mendukung sinkronisasi dat
 - [Contributing](#-contributing)
 - [Support](#-support)
 - [CI/CD & Deployment](#-cicd--deployment)
+- [Docker Deployment](#-docker-deployment)
 
 ## 🚀 Fitur Utama
 
@@ -633,3 +634,70 @@ SONAR_TOKEN                    # Token untuk SonarCloud analysis
 - File `serviceAccountKey.json` akan dibuat secara otomatis dari secrets
 - File ini akan dihapus setelah CI/CD selesai untuk keamanan
 - Pastikan tidak commit file credentials ke repository
+
+## 📦 Docker Deployment
+
+Project ini telah dikonfigurasi untuk deployment menggunakan Docker dan Docker Compose.
+
+#### **Build Docker Image Locally:**
+```bash
+# Build image
+docker build -t aplikasir-backend .
+
+# Run container
+docker run -p 3000:3000 \
+  -e DB_HOST=your_db_host \
+  -e DB_USER=your_db_user \
+  -e DB_PASSWORD=your_db_password \
+  -e DB_NAME=aplikasir_db \
+  -e FIREBASE_PROJECT_ID=your_project_id \
+  -e FIREBASE_BUCKET_NAME=your_bucket_name \
+  aplikasir-backend
+```
+
+#### **Deploy dengan Docker Compose:**
+```bash
+# Copy environment template
+cp .env.production .env
+
+# Edit environment variables
+nano .env
+
+# Start all services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f aplikasir-backend
+```
+
+#### **Quick Deployment Scripts:**
+
+For easier deployment, use the provided scripts:
+
+**Linux/Mac:**
+```bash
+chmod +x deploy-local.sh
+./deploy-local.sh
+```
+
+**Windows PowerShell:**
+```powershell
+.\deploy-local.ps1
+```
+
+Scripts akan otomatis:
+- ✅ Check Docker installation
+- ✅ Create .env file dari template
+- ✅ Build dan start semua services
+- ✅ Perform health checks
+- ✅ Show service status dan logs
+
+#### **Additional GitHub Secrets untuk Docker:**
+```
+DB_PASSWORD                    # Password MySQL untuk aplikasi
+MYSQL_ROOT_PASSWORD           # Root password MySQL
+JWT_SECRET                    # Secret key untuk JWT tokens
+```

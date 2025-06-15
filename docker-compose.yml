@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  aplikasir-backend:
+    image: hshinosa/aplikasir-backend:latest
+    container_name: aplikasir-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_USER=aplikasir_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=aplika19_db_aplikasir
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_BUCKET_NAME=${FIREBASE_BUCKET_NAME}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - aplikasir-network
+    volumes:
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mysql:
+    image: mysql:8.0
+    container_name: aplikasir-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=aplikasir_db
+      - MYSQL_USER=aplikasir_user
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - aplikasir-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --init-connect='SET NAMES utf8mb4;'
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  aplikasir-network:
+    driver: bridge
