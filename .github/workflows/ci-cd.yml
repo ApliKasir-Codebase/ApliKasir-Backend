@@ -117,8 +117,11 @@ jobs:
 
       # Run Jest unit tests with coverage and output to coverage/lcov.info
       - name: Run Jest Unit Tests
+        id: jest-coverage
         run: |
-          npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary
+          npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary > jest-coverage.txt
+          COVERAGE=$(awk '/All files/ {getline; print $4}' jest-coverage.txt | cut -d'%' -f1)
+          echo "JEST_COVERAGE=$COVERAGE" >> $GITHUB_ENV
         env:
           NODE_ENV: test
           DB_HOST: 127.0.0.1
@@ -130,20 +133,41 @@ jobs:
           FIREBASE_BUCKET_NAME: ${{ secrets.FIREBASE_BUCKET_NAME }}
           GOOGLE_APPLICATION_CREDENTIALS: ./serviceAccountKey.json
 
+      - name: Fail if Jest Coverage < 80%
+        run: |
+          if [ -z "$JEST_COVERAGE" ]; then
+            echo "Jest coverage not found. Failing the build."
+            exit 1
+          fi
+          if [ "$JEST_COVERAGE" -lt 80 ]; then
+            echo "Jest coverage is $JEST_COVERAGE%, which is below 80%. Failing the build."
+            exit 1
+          fi
+
       - name: Upload coverage to SonarQube
         uses: actions/upload-artifact@v4
         with:
-            name: coverage-report
-            path: coverage/lcov.info
+          name: coverage-report
+          path: coverage/lcov.info
 
   sonar-scan:
     name: Continous Inspection dengan SonarQube
     runs-on: ubuntu-latest
+    needs: build-and-test
     permissions:
       pull-requests: read
     steps:
       - uses: actions/checkout@v2
         with: { fetch-depth: 0 }
+      - name: Configure Git
+        run: |
+          git config --global user.name "hshinosa"
+          git config --global user.email "mhashfi12@gmail.com"
+      - name: Download coverage from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
       - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@4006f663ecaf1f8093e8e4abb9227f6041f52216
         env:
