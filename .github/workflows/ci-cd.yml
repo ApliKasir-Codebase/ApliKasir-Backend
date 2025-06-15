@@ -106,13 +106,13 @@ jobs:
             kill $(cat server.pid) || true
             rm server.pid
           fi
-          
-      # Cleanup: Remove Firebase service account key
+            # Cleanup: Remove Firebase service account key
       - name: Cleanup Firebase Key
         if: always()
         run: |
           if [ -f serviceAccountKey.json ]; then
-            rm serviceAccountKey.json          fi
+            rm serviceAccountKey.json
+          fi
 
       # Run Jest unit tests with coverage and output to coverage/lcov.info
       - name: Run Jest Unit Tests
