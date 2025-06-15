@@ -74,26 +74,17 @@ exports.updateUserProfile = async (req, res) => {
              }
              // Jika user ada tapi affectedRows = 0, mungkin data sama
             res.status(200).send({ message: "No changes detected or user not found." });
-        }
-    } catch (error) {
+        }    } catch (error) {
         console.error("Update User Profile Error:", error);
         if (error.code === 'ER_DUP_ENTRY') {
-             if (error.sqlMessage.includes('email')) {
+             if (error.sqlMessage && error.sqlMessage.includes('email')) {
                 return res.status(409).send({ message: "Update failed! Email is already in use by another account." });
-            } else if (error.sqlMessage.includes('phoneNumber')) {
+            } else if (error.sqlMessage && (error.sqlMessage.includes('phoneNumber') || error.sqlMessage.includes('phonenumber'))) {
                 return res.status(409).send({ message: "Update failed! Phone number is already in use by another account." });
+            } else {
+                return res.status(409).send({ message: "Update failed! Duplicate entry detected." });
             }
         }
         res.status(500).send({ message: error.message || "Error updating user profile." });
     }
 };
-
-// // Delete User Account (PERLU KEHATI-HATIAN EKSTRA!)
-// // Biasanya tidak diimplementasikan atau memerlukan konfirmasi berlapis
-// exports.deleteUserAccount = async (req, res) => {
-//     const userId = req.userId;
-//     // Implementasi logika delete (hard delete atau soft delete)
-//     // Pastikan ada konfirmasi password atau mekanisme keamanan lain
-//     // Hati-hati dengan data terkait (produk, transaksi, dll.) jika menggunakan ON DELETE CASCADE
-//     res.status(501).send({ message: "Delete account endpoint not implemented." });
-// }
