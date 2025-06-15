@@ -19,6 +19,54 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "test_email",
+      "value": "jajang@test.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "password123",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_phone",
+      "value": "+6281234567890",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_name",
+      "value": "Jajang Supriatna",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_store_name",
+      "value": "Toko Jajang",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_store_address",
+      "value": "Jl. Merdeka No. 123",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "existing_user_email",
+      "value": "john@example.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "existing_user_password",
+      "value": "password123",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment"

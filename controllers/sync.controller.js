@@ -502,7 +502,7 @@ async function insertNewTransaction(connection, userId, transaction, serverCusto
     ]);
 
     response.serverChanges.transactions.new.push({
-        localId: transaction.id,
+        localId: transaction.id_transaksi_local, // Changed from transaction.id
         serverId: result.insertId,
         tanggal_transaksi: transaction.tanggal_transaksi
     });
@@ -531,11 +531,14 @@ async function uploadUpdatedTransactions(connection, userId, updatedTransactions
 
             if (result.affectedRows > 0) {
                 response.itemsUploaded++;
+            } else {
+                // Added else block for not found scenario
+                response.errors.push(`Transaction not found or not owned for update: ${transaction.id_transaksi_local || transaction.server_id}`);
             }
             
         } catch (error) {
-            console.error(`Error updating transaction:`, error);
-            response.errors.push(`Failed to update transaction: ${error.message}`);
+            console.error(`Error updating transaction ${transaction.id_transaksi_local || transaction.server_id}:`, error); // Improved error logging
+            response.errors.push(`Failed to update transaction ${transaction.id_transaksi_local || transaction.server_id}: ${error.message}`); // Improved error message
         }
     }
 }
@@ -543,21 +546,27 @@ async function uploadUpdatedTransactions(connection, userId, updatedTransactions
 /**
  * Upload deleted transactions to server (soft delete)
  */
-async function uploadDeletedTransactions(connection, userId, deletedTransactionIds, response, serverSyncTime) {
-    console.log(`Deleting ${deletedTransactionIds.length} transactions...`);
+// Changed parameter name and logic to handle array of transaction objects
+async function uploadDeletedTransactions(connection, userId, deletedTransactions, response, serverSyncTime) {
+    console.log(`Deleting ${deletedTransactions.length} transactions...`);
     
-    for (const transactionId of deletedTransactionIds) {
+    for (const transaction of deletedTransactions) { // Iterate over transaction objects
         try {
             const sql = `UPDATE transactions SET deleted_at = ? WHERE id = ? AND user_id = ?`;
-            const [result] = await connection.query(sql, [serverSyncTime, transactionId, userId]);
+            // Use transaction.server_id assuming client sends it for deletion
+            const [result] = await connection.query(sql, [serverSyncTime, transaction.server_id, userId]);
 
             if (result.affectedRows > 0) {
                 response.itemsUploaded++;
+            } else {
+                // Added else block for not found scenario
+                response.errors.push(`Transaction not found for deletion: ID ${transaction.id_transaksi_local || transaction.server_id}`);
             }
             
         } catch (error) {
-            console.error(`Error deleting transaction ${transactionId}:`, error);
-            response.errors.push(`Failed to delete transaction: ID ${transactionId} - ${error.message}`);
+            // Improved error logging and message
+            console.error(`Error deleting transaction ${transaction.id_transaksi_local || transaction.server_id}:`, error);
+            response.errors.push(`Failed to delete transaction: ID ${transaction.id_transaksi_local || transaction.server_id} - ${error.message}`);
         }
     }
 }
@@ -581,7 +590,7 @@ async function processDownloads(connection, userId, clientLastSyncTime, response
         products.forEach(product => {
             if (product.deleted_at) {
                 response.serverChanges.products.deleted.push(product.id);
-            } else if (product.created_at > lastSync) {
+            } else if (new Date(product.created_at).getTime() > lastSync.getTime()) {
                 response.serverChanges.products.new.push(product);
             } else {
                 response.serverChanges.products.updated.push(product);
@@ -600,7 +609,7 @@ async function processDownloads(connection, userId, clientLastSyncTime, response
         customers.forEach(customer => {
             if (customer.deleted_at) {
                 response.serverChanges.customers.deleted.push(customer.id);
-            } else if (customer.created_at > lastSync) {
+            } else if (new Date(customer.created_at).getTime() > lastSync.getTime()) {
                 response.serverChanges.customers.new.push(customer);
             } else {
                 response.serverChanges.customers.updated.push(customer);
@@ -621,7 +630,7 @@ async function processDownloads(connection, userId, clientLastSyncTime, response
         transactions.forEach(transaction => {
             if (transaction.deleted_at) {
                 response.serverChanges.transactions.deleted.push(transaction.id);
-            } else if (transaction.created_at > lastSync) {
+            } else if (new Date(transaction.created_at).getTime() > lastSync.getTime()) {
                 response.serverChanges.transactions.new.push(transaction);
             } else {
                 response.serverChanges.transactions.updated.push(transaction);
@@ -895,6 +904,13 @@ async function applyAutoResolution(connection, userId, productId, resolvedData, 
 async function detectCustomerConflicts(connection, userId, localCustomers, response) {
     for (const localCustomer of localCustomers) {
         try {
+            // Skip conflict detection if localCustomer.id is undefined, as it implies a new customer
+            // that might have been intended for upload but failed, or is a new local draft.
+            // Conflict detection is primarily for items that exist on both client and server (i.e., have a server_id).
+            if (localCustomer.server_id === undefined || localCustomer.server_id === null) {
+                console.warn(`Skipping conflict detection for customer without server_id: ${localCustomer.id || 'Unknown ID'}`);
+                continue;
+            }
             await processCustomerConflict(connection, userId, localCustomer, response);
         } catch (error) {
             console.error(`Error detecting conflict for customer ${localCustomer.server_id}:`, error);
@@ -1765,3 +1781,27 @@ exports.synchronizeDownloadOnly = async (req, res) => {
         }
     }
 };
+
+// Export internal functions for testing
+module.exports.processUploads = processUploads;
+module.exports.uploadProducts = uploadProducts;
+module.exports.uploadCustomers = uploadCustomers;
+module.exports.uploadTransactions = uploadTransactions;
+module.exports.uploadNewProducts = uploadNewProducts;
+module.exports.uploadUpdatedProducts = uploadUpdatedProducts;
+module.exports.uploadDeletedProducts = uploadDeletedProducts;
+module.exports.uploadNewCustomers = uploadNewCustomers;
+module.exports.uploadUpdatedCustomers = uploadUpdatedCustomers;
+module.exports.uploadDeletedCustomers = uploadDeletedCustomers;
+module.exports.uploadNewTransactions = uploadNewTransactions;
+module.exports.uploadUpdatedTransactions = uploadUpdatedTransactions;
+module.exports.uploadDeletedTransactions = uploadDeletedTransactions;
+module.exports.analyzeProductFieldConflicts = analyzeProductFieldConflicts;
+module.exports.analyzeCustomerFieldConflicts = analyzeCustomerFieldConflicts;
+module.exports.analyzeTransactionFieldConflicts = analyzeTransactionFieldConflicts;
+module.exports.createProductConflictRecord = createProductConflictRecord;
+module.exports.addMissingProductConflict = addMissingProductConflict;
+module.exports.addMissingCustomerConflict = addMissingCustomerConflict;
+module.exports.addMissingTransactionConflict = addMissingTransactionConflict;
+module.exports.hasTimestampConflict = hasTimestampConflict;
+module.exports.resolveProductConflicts = resolveProductConflicts;

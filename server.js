@@ -2,6 +2,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require('dotenv');
+const multer = require('multer');
 
 dotenv.config();
 
@@ -16,6 +17,17 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// ----- Routes -----
+app.get("/", (req, res) => {
+    res.json({ message: "Welcome to ApliKasir Backend API." });
+});
+
+// Impor dan gunakan routes
+require('./routes/auth.routes')(app);
+require('./routes/user.routes')(app);
+require('./routes/sync.routes')(app);
+
+// Error handling middleware should be after routes
 app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err.stack || err);
 
@@ -28,19 +40,13 @@ app.use((err, req, res, next) => {
     });
 });
 
-// ----- Routes -----
-app.get("/", (req, res) => {
-    res.json({ message: "Welcome to ApliKasir Backend API." });
-});
+// Export app for testing
+module.exports = app;
 
-// Impor dan gunakan routes
-require('./routes/auth.routes')(app);
-require('./routes/user.routes')(app);
-require('./routes/sync.routes')(app);
-
-
-// ----- Set Port and Listen -----
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}.`);
-});
+// Only start server if this file is run directly (not when required by tests)
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}.`);
+    });
+}
