@@ -48,7 +48,7 @@
 							}
 						],						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Jajang\",\n    \"email\": \"jajang@email.com\",\n    \"phoneNumber\": \"089612378235\",\n    \"storeName\": \"Toko Jajang\",\n    \"storeAddress\": \"Jl. Jalanan No. 123, Jakarta\",\n    \"password\": \"password123\"\n}",
+							"raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"testuser@example.com\",\n    \"phoneNumber\": \"081234567890\",\n    \"storeName\": \"Toko Test\",\n    \"storeAddress\": \"Jl. Test No. 123, Jakarta\",\n    \"password\": \"password123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"

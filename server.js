@@ -2,13 +2,12 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require('dotenv');
-const multer = require('multer');
 
 dotenv.config();
 
 const app = express();
 
-const corsOptions = {
+var corsOptions = {
     origin: "*" // Izinkan semua origin (untuk development)
     // origin: "http://localhost:8081" // Contoh spesifik origin
 };
