@@ -113,28 +113,55 @@ jobs:
         run: |
           if [ -f serviceAccountKey.json ]; then
             rm serviceAccountKey.json
-          fi
-
-      # Run Jest unit tests with coverage and output to coverage/lcov.info
+          fi      # Run Jest unit tests with coverage and output to coverage/lcov.info
       - name: Run Jest Unit Tests
         id: jest-coverage
         continue-on-error: true
         run: |
-          npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary > jest-coverage.txt
+          # Install bc for calculations
+          sudo apt-get update && sudo apt-get install -y bc
+          
+          # Run Jest with coverage and capture both stdout and stderr
+          npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageReporters=json-summary 2>&1 | tee jest-coverage.txt
           echo "Jest exit code: $?"
-          # Ambil coverage dari jest-coverage.txt (text-summary)
-          COVERAGE=$(awk '/All files/ {getline; print $4}' jest-coverage.txt | cut -d'%' -f1)
-          # Jika gagal, fallback ke coverage/coverage-summary.json
+          
+          # Debug: List coverage directory
+          echo "[DEBUG] Coverage directory contents:"
+          ls -la coverage/ || echo "Coverage directory not found"
+          
+          # Method 1: Parse from jest-coverage.txt (look for coverage summary)
+          COVERAGE=$(grep -E "All files.*%" jest-coverage.txt | awk '{for(i=1;i<=NF;i++) if($i ~ /%/) print $i}' | head -1 | sed 's/%//')
+          echo "[DEBUG] Coverage from text output: '$COVERAGE'"
+          
+          # Method 2: If empty, try coverage-summary.json
           if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "" ]; then
             if [ -f coverage/coverage-summary.json ]; then
-              COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json | cut -d'.' -f1)
-              echo "(Fallback) Coverage from coverage-summary.json: $COVERAGE"
+              COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null | cut -d'.' -f1)
+              echo "[DEBUG] Coverage from coverage-summary.json: '$COVERAGE'"
             fi
           fi
+          
+          # Method 3: If still empty, try parsing lcov.info
+          if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "" ]; then
+            if [ -f coverage/lcov.info ]; then
+              LINES_FOUND=$(grep "^LF:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum}')
+              LINES_HIT=$(grep "^LH:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum}')
+              if [ "$LINES_FOUND" -gt 0 ]; then
+                COVERAGE=$(echo "scale=0; $LINES_HIT * 100 / $LINES_FOUND" | bc)
+                echo "[DEBUG] Coverage calculated from lcov.info: '$COVERAGE' (hit: $LINES_HIT, found: $LINES_FOUND)"
+              fi
+            fi
+          fi
+          
           echo "JEST_COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          echo "Final coverage value: '$COVERAGE'"
+          
+          # Debug output if coverage still not found
           if [ -z "$COVERAGE" ]; then
-            echo "[DEBUG] coverage/coverage-summary.json content:" && cat coverage/coverage-summary.json || echo "File not found"
-            echo "[DEBUG] jest-coverage.txt content:" && cat jest-coverage.txt || echo "File not found"
+            echo "[DEBUG] jest-coverage.txt content:"
+            cat jest-coverage.txt || echo "File not found"
+            echo "[DEBUG] coverage-summary.json content:"
+            cat coverage/coverage-summary.json || echo "File not found"
           fi
         env:
           NODE_ENV: test
@@ -149,11 +176,16 @@ jobs:
 
       - name: Check Coverage and Set Build Status
         run: |
-          if [ -z "$JEST_COVERAGE" ]; then
+          echo "Checking coverage: '$JEST_COVERAGE'"
+          if [ -z "$JEST_COVERAGE" ] || [ "$JEST_COVERAGE" = "" ]; then
             echo "Jest coverage not found. Failing the build."
             exit 1
           fi
-          if [ "$JEST_COVERAGE" -lt 80 ]; then
+          
+          # Convert to integer for comparison (handle decimal values)
+          COVERAGE_INT=$(echo "$JEST_COVERAGE" | cut -d'.' -f1)
+          
+          if [ "$COVERAGE_INT" -lt 80 ]; then
             echo "Jest coverage is $JEST_COVERAGE%, which is below 80%. Failing the build."
             exit 1
           fi
