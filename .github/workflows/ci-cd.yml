@@ -173,8 +173,7 @@ jobs:
             cat jest-coverage.txt || echo "File not found"
             echo "[DEBUG] coverage-summary.json content:"
             cat coverage/coverage-summary.json || echo "File not found"
-          fi
-        env:
+          fi        env:
           NODE_ENV: test
           DB_HOST: 127.0.0.1
           DB_USER: root
@@ -195,11 +194,14 @@ jobs:
           
           # Convert to integer for comparison (handle decimal values)
           COVERAGE_INT=$(echo "$JEST_COVERAGE" | cut -d'.' -f1)
+          echo "Coverage as integer: '$COVERAGE_INT'"
           
           if [ "$COVERAGE_INT" -lt 80 ]; then
             echo "Jest coverage is $JEST_COVERAGE%, which is below 80%. Failing the build."
             exit 1
-          fi          echo "Jest coverage is $JEST_COVERAGE%, build PASSED (even if some tests failed)."
+          fi
+          
+          echo "Jest coverage is $JEST_COVERAGE% (>= 80%), build PASSED (even if some tests failed)."
           exit 0
 
       - name: Upload coverage to SonarQube
