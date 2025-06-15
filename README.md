@@ -18,6 +18,7 @@ Backend API untuk aplikasi kasir (Point of Sale) yang mendukung sinkronisasi dat
 - [NPM Scripts](#-npm-scripts)
 - [Contributing](#-contributing)
 - [Support](#-support)
+- [CI/CD & Deployment](#-cicd--deployment)
 
 ## 🚀 Fitur Utama
 
@@ -575,3 +576,60 @@ Jika menemui masalah atau butuh bantuan:
 ---
 
 **Made with ❤️ by ApliKasir Team** | **License**: MIT | **Version**: 1.0.0
+
+## 🔄 CI/CD & Deployment
+
+Project ini menggunakan GitHub Actions untuk automated testing, building, dan deployment.
+
+### 🔧 GitHub Secrets Configuration
+
+Untuk menjalankan CI/CD pipeline, Anda perlu mengatur secrets berikut di GitHub repository settings:
+
+#### **Database & Server Secrets:**
+- Tidak ada - menggunakan MySQL service container untuk testing
+
+#### **Firebase Secrets:**
+```
+FIREBASE_SERVICE_ACCOUNT_KEY    # JSON content dari serviceAccountKey.json
+FIREBASE_PROJECT_ID             # Project ID Firebase Anda
+FIREBASE_BUCKET_NAME           # Nama bucket Firebase Storage
+```
+
+#### **Docker Hub Secrets:**
+```
+DOCKER_USERNAME                # Username Docker Hub
+DOCKER_PASSWORD                # Password atau Access Token Docker Hub
+```
+
+#### **VPS Deployment Secrets:**
+```
+VPS_HOST                       # IP atau hostname VPS
+VPS_USER                       # Username untuk SSH
+VPS_SSH_PRIVATE_KEY           # Private key untuk SSH access
+```
+
+#### **SonarQube Secrets:**
+```
+SONAR_TOKEN                    # Token untuk SonarCloud analysis
+```
+
+### 🚀 CI/CD Pipeline Flow
+
+1. **Build & Test** - Install dependencies, setup MySQL, run server, execute Newman tests
+2. **Code Quality** - SonarQube analysis untuk code quality check
+3. **Docker Build** - Build dan push Docker image ke Docker Hub
+4. **Deploy** - Deploy ke VPS menggunakan Docker Compose
+
+### 📝 Setup Firebase Secrets
+
+1. Buka file `serviceAccountKey.json` Anda
+2. Copy seluruh content JSON
+3. Paste ke GitHub Secret `FIREBASE_SERVICE_ACCOUNT_KEY`
+4. Set `FIREBASE_PROJECT_ID` dengan project ID Firebase
+5. Set `FIREBASE_BUCKET_NAME` dengan nama bucket Storage
+
+### 🔐 Security Notes
+
+- File `serviceAccountKey.json` akan dibuat secara otomatis dari secrets
+- File ini akan dihapus setelah CI/CD selesai untuk keamanan
+- Pastikan tidak commit file credentials ke repository
