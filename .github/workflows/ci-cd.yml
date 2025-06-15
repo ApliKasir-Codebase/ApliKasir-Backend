@@ -112,8 +112,9 @@ jobs:
         if: always()
         run: |
           if [ -f serviceAccountKey.json ]; then
-            rm serviceAccountKey.json
-          fi      # Run Jest unit tests with coverage and output to coverage/lcov.info
+            rm serviceAccountKey.json          fi
+
+      # Run Jest unit tests with coverage and output to coverage/lcov.info
       - name: Run Jest Unit Tests
         id: jest-coverage
         continue-on-error: true
@@ -121,20 +122,12 @@ jobs:
           # Install bc for calculations
           sudo apt-get update && sudo apt-get install -y bc
           
-          # Run Jest with coverage and XML reporter for SonarQube
+          # Run Jest with coverage
           npm run test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary --coverageReporters=json-summary 2>&1 | tee jest-coverage.txt
           echo "Jest exit code: $?"
 
           # Ensure coverage directory exists
           mkdir -p coverage
-          
-          # Verify test-report.xml was created
-          if [ -f coverage/test-report.xml ]; then
-            echo "test-report.xml created successfully"
-          else
-            echo "Warning: test-report.xml not found, creating placeholder"
-            echo '<?xml version="1.0" encoding="UTF-8"?><testsuites><testsuite name="placeholder" tests="0" failures="0" time="0"></testsuite></testsuites>' > coverage/test-report.xml
-          fi
           
           # Debug: List coverage directory
           echo "[DEBUG] Coverage directory contents:"
@@ -173,7 +166,8 @@ jobs:
             cat jest-coverage.txt || echo "File not found"
             echo "[DEBUG] coverage-summary.json content:"
             cat coverage/coverage-summary.json || echo "File not found"
-          fi        env:
+          fi
+        env:
           NODE_ENV: test
           DB_HOST: 127.0.0.1
           DB_USER: root
@@ -186,29 +180,28 @@ jobs:
 
       - name: Check Coverage and Set Build Status
         run: |
-          echo "Checking coverage: '$JEST_COVERAGE'"
-          if [ -z "$JEST_COVERAGE" ] || [ "$JEST_COVERAGE" = "" ]; then
+          echo "Checking coverage: '${JEST_COVERAGE}'"
+          if [ -z "${JEST_COVERAGE}" ] || [ "${JEST_COVERAGE}" = "" ]; then
             echo "Jest coverage not found. Failing the build."
             exit 1
           fi
           
           # Convert to integer for comparison (handle decimal values)
-          COVERAGE_INT=$(echo "$JEST_COVERAGE" | cut -d'.' -f1)
-          echo "Coverage as integer: '$COVERAGE_INT'"
+          COVERAGE_INT=$(echo "${JEST_COVERAGE}" | cut -d'.' -f1)
+          echo "Coverage as integer: '${COVERAGE_INT}'"
           
-          if [ "$COVERAGE_INT" -lt 80 ]; then
-            echo "Jest coverage is $JEST_COVERAGE%, which is below 80%. Failing the build."
+          if [ "${COVERAGE_INT}" -lt 80 ]; then
+            echo "Jest coverage is ${JEST_COVERAGE}%, which is below 80%. Failing the build."
             exit 1
           fi
-          
-          echo "Jest coverage is $JEST_COVERAGE% (>= 80%), build PASSED (even if some tests failed)."
+            echo "Jest coverage is ${JEST_COVERAGE}% (>= 80%), build PASSED (even if some tests failed)."
           exit 0
 
       - name: Upload coverage to SonarQube
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: coverage/lcov.info
 
   sonar-scan:
     name: Continous Inspection dengan SonarQube
